@@ -41,23 +41,26 @@
 ### 1. Code Comprehension Engine
 Multi-language AST parsing (Java, Python, TypeScript, JavaScript, SQL) with functional decomposition, business rule extraction, and data flow tracing.
 
-### 2. Architecture Reconstruction
-Reverse-engineers system architecture from code — generates layer diagrams, service mesh topology, module dependency maps, and API contract visualization.
+### 2. BFSI Domain Analyzer [New]
+Uses a subset of banking domain keywords (`payment`, `aml`, `ledger`, `reporting`) to flag critical node behaviors, calculating "Payment Flow Integrity Risk", "AML Sanctions Validation Risk" instead of generic technical debt labels.
 
-### 3. Dependency Graph Visualization
-Interactive Cytoscape.js-powered graph with 52+ node types, 54+ edge relationships, type/risk filtering, neighborhood highlighting, and node-level metrics (LOC, complexity, coverage, maintainability).
+### 3. Architecture Reconstruction
+Reverse-engineers system architecture from code — generates system layer diagrams, service mesh topology, module dependency maps, and API contract visualization dynamically mapped through `.nodes` and `.edges`.
 
-### 4. Risk & Impact Simulation
-Pre-commit risk radar with severity scoring, category filtering, and **what-if analysis** — simulates downstream cascade, SLA risk, compliance risk, and data integrity risk before any code is deployed.
+### 4. Dependency Graph Visualization
+Interactive Cytoscape.js-powered graph with live node clustering, directional pathfinding, type/risk filtering, neighborhood highlighting, and node-level metrics (LOC, complexity).
 
-### 5. Business Intelligence Layer
-Code-to-business capability mapping aligned with the **BIAN (Banking Industry Architecture Network)** framework. Tracks health scores, test coverage, and domain coverage across Operations, Compliance, Customer Management, Capital Markets, and Finance.
+### 5. Risk & Impact Simulation
+Pre-commit risk radar with severity scoring, category filtering, and **what-if analysis** — simulates downstream cascade, SLA risk, compliance risk, and data integrity risk before any code is deployed based on static code parsing.
 
-### 6. AI Remediation Engine
-AI-generated remediation suggestions with confidence scores, effort estimates (in engineering days), pattern identification, and accept/reject workflows with cumulative risk reduction tracking.
+### 6. Business Intelligence Layer
+Code-to-business capability mapping dynamically aligned with the **BIAN (Banking Industry Architecture Network)** framework. Calculates live tracking coverage across domains like Operations, Compliance, Security, Customer Management, Capital Markets, and Finance.
 
-### 7. Governance & Audit
-Complete audit trail with filterable logs (scan, analysis, config change, access, AI inference), scan history, and **RBAC** role management for Admin, Architect, Developer, and Auditor personas.
+### 7. AI Remediation Engine [New]
+AI-generated remediation suggestions from discovered technical debt and architecture smells. Ranks with expected Risk Reduction scores, Confidence, and actionable Effort estimates (in engineering days), complete with an accept/reject audit workflow.
+
+### 8. Governance & Audit [New]
+Local-storage backed active Enterprise Audit trail that captures interactions like 'Live Repository Scan Initiated' with a timestamp to record governance activity within the UI natively. RBAC role management for Admin, Architect, Developer, and Auditor personas.
 
 ---
 
@@ -212,7 +215,9 @@ cfip/
 │       ├── risk_scorer.py              # Risk severity scoring
 │       ├── code_scanner.py             # Directory scan & metrics
 │       ├── github_client.py            # GitHub PAT integration
-│       └── business_mapper.py          # BIAN taxonomy mapping
+│       ├── business_mapper.py          # BIAN taxonomy mapping
+│       ├── bfsi_analyzer.py            # Financial domain pattern rules
+│       └── remediation_generator.py    # AI insights & risk reduction logic
 ├── package.json
 └── README.md
 ```
