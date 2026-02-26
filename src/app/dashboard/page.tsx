@@ -4,10 +4,11 @@ import { useEffect, useRef, useState } from 'react';
 import {
     FiDatabase, FiCode, FiGitBranch, FiAlertTriangle, FiTrendingDown,
     FiActivity, FiCpu, FiCheckCircle, FiClock, FiShield, FiArrowUpRight, FiArrowDownRight,
-    FiFileText
+    FiFileText, FiPlay
 } from 'react-icons/fi';
 import { dashboardStats, repositories, riskItems } from '@/lib/seed-data';
 import * as d3 from 'd3';
+import { useScan } from '@/lib/scan-context';
 
 function RiskTrendChart() {
     const svgRef = useRef<SVGSVGElement>(null);
@@ -17,7 +18,7 @@ function RiskTrendChart() {
         const svg = d3.select(svgRef.current);
         svg.selectAll('*').remove();
 
-        const width = svgRef.current.clientWidth;
+        const width = svgRef.current.clientWidth || 300;
         const height = 200;
         const margin = { top: 20, right: 20, bottom: 30, left: 40 };
 
@@ -111,7 +112,7 @@ function RiskTrendChart() {
     return <svg ref={svgRef} style={{ width: '100%', height: '200px' }} />;
 }
 
-function LanguageDonut() {
+function LanguageDonut({ scanData }: { scanData: any }) {
     const svgRef = useRef<SVGSVGElement>(null);
 
     useEffect(() => {
@@ -125,7 +126,24 @@ function LanguageDonut() {
 
         const g = svg.append('g').attr('transform', `translate(${radius},${radius})`);
 
-        const data = dashboardStats.codebaseLanguages;
+        // Use scan data if available, else seed data
+        let data: any[] = [];
+        let totalFiles = 0;
+
+        if (scanData && scanData.metrics && scanData.metrics.language_breakdown) {
+            const breakdown = scanData.metrics.language_breakdown;
+            totalFiles = scanData.metrics.total_files;
+
+            data = Object.keys(breakdown).map(lang => ({
+                language: lang,
+                files: breakdown[lang],
+                percentage: Math.round((breakdown[lang] / totalFiles) * 100)
+            })).sort((a, b) => b.percentage - a.percentage);
+        } else {
+            data = dashboardStats.codebaseLanguages;
+            totalFiles = 1306;
+        }
+
         const colors = ['#6366f1', '#8b5cf6', '#06b6d4', '#22c55e', '#64748b'];
 
         const pie = d3.pie<typeof data[0]>().value(d => d.percentage).sort(null).padAngle(0.03);
@@ -134,18 +152,20 @@ function LanguageDonut() {
             .outerRadius(radius)
             .cornerRadius(3);
 
-        g.selectAll('path')
-            .data(pie(data))
-            .join('path')
-            .attr('d', arc)
-            .attr('fill', (_, i) => colors[i])
-            .attr('stroke', 'transparent');
+        if (data.length > 0) {
+            g.selectAll('path')
+                .data(pie(data))
+                .join('path')
+                .attr('d', arc)
+                .attr('fill', (_, i) => colors[i % colors.length])
+                .attr('stroke', 'transparent');
+        }
 
         // Center text
-        g.append('text').attr('text-anchor', 'middle').attr('dy', '-4px').attr('fill', '#f1f5f9').attr('font-size', '20px').attr('font-weight', '800').text('1306');
+        g.append('text').attr('text-anchor', 'middle').attr('dy', '-4px').attr('fill', '#f1f5f9').attr('font-size', '20px').attr('font-weight', '800').text(totalFiles);
         g.append('text').attr('text-anchor', 'middle').attr('dy', '14px').attr('fill', '#64748b').attr('font-size', '10px').text('Total Files');
 
-    }, []);
+    }, [scanData]);
 
     return <svg ref={svgRef} style={{ width: '160px', height: '160px' }} />;
 }
@@ -159,20 +179,100 @@ const severityIcons: Record<string, React.ReactNode> = {
 
 export default function DashboardPage() {
     const [mounted, setMounted] = useState(false);
-    useEffect(() => { setMounted(true); }, []);
+    const { scanData, isScanning, runScan } = useScan();
+    const [repoUrl, setRepoUrl] = useState('');
+
+    useEffect(() => { setTimeout(() => setMounted(true), 0); }, []);
 
     if (!mounted) return null;
 
-    const stats = dashboardStats;
+    const handleScan = async () => {
+        if (!repoUrl) return;
+        const pat = localStorage.getItem('cfip_github_pat');
+        if (!pat) {
+            alert("No GitHub PAT found. Please add it in Settings.");
+            return;
+        }
+        await runScan(repoUrl, pat);
+    };
+
+    // Calculate dynamic stats if scanData is present
+    const stats = { ...dashboardStats };
+    let risks = [...riskItems];
+    let languages = dashboardStats.codebaseLanguages;
+
+    if (scanData) {
+        // Derive stats from real Python response
+        stats.totalRepositories = 1;
+        stats.totalFunctions = scanData.nodes.length;
+        stats.criticalRisks = scanData.risks.filter(r => r.severity === 'critical').length;
+        stats.highRisks = scanData.risks.filter(r => r.severity === 'high').length;
+        stats.mediumRisks = scanData.risks.filter(r => r.severity === 'medium').length;
+        stats.lowRisks = scanData.risks.filter(r => r.severity === 'low').length;
+        stats.avgHealthScore = 100 - (stats.criticalRisks * 2) - stats.highRisks;
+        if (stats.avgHealthScore < 0) stats.avgHealthScore = 0;
+
+        stats.scansCompleted += 1;
+        stats.graphNodes = scanData.nodes.length;
+
+        risks = scanData.risks.map((r, i) => ({
+            id: `risk-${i}`,
+            title: r.reason,
+            severity: r.severity,
+            category: r.risk_type.split('_').join(' '),
+            nodeId: r.node_id,
+            affectedDownstream: r.affected_downstream_count,
+            businessImpact: `Impact on ${scanData.nodes.find(n => n.id === r.node_id)?.label || 'unknown'} and downstream dependencies`,
+            estimatedEffort: r.recommendation.length > 50 ? '3 days' : '1 day',
+            type: r.risk_type,
+            description: r.reason,
+            recommendation: r.recommendation
+        }));
+
+        if (scanData.metrics && scanData.metrics.language_breakdown) {
+            const breakdown = scanData.metrics.language_breakdown;
+            const total = scanData.metrics.total_files;
+            languages = Object.keys(breakdown).map(lang => ({
+                language: lang.replace('.', '').toUpperCase(),
+                files: breakdown[lang],
+                percentage: Math.round((breakdown[lang] / total) * 100)
+            })).sort((a, b) => b.percentage - a.percentage);
+        }
+    }
 
     return (
         <div className="animate-fade-in">
-            <div className="page-header">
-                <div className="breadcrumb">
-                    <span>CFIP</span> / Dashboard
+            <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                <div>
+                    <div className="breadcrumb">
+                        <span>CFIP</span> / Dashboard
+                    </div>
+                    <h1>Command Center</h1>
+                    <p>Real-time code intelligence across {stats.totalRepositories} repositories</p>
                 </div>
-                <h1>Command Center</h1>
-                <p>Real-time code intelligence across {stats.totalRepositories} repositories</p>
+
+                {/* Live Scan Input */}
+                <div style={{ display: 'flex', gap: '8px' }}>
+                    <input
+                        className="input"
+                        placeholder="https://github.com/org/repo"
+                        value={repoUrl}
+                        onChange={(e) => setRepoUrl(e.target.value)}
+                        style={{ width: '300px' }}
+                        disabled={isScanning}
+                    />
+                    <button
+                        className="btn btn-primary"
+                        onClick={handleScan}
+                        disabled={isScanning || !repoUrl}
+                    >
+                        {isScanning ? (
+                            <><div className="animate-spin" style={{ width: '14px', height: '14px', border: '2px solid rgba(255,255,255,0.3)', borderTopColor: 'white', borderRadius: '50%' }} /> Scanning...</>
+                        ) : (
+                            <><FiPlay size={14} /> Scan Repo</>
+                        )}
+                    </button>
+                </div>
             </div>
 
             {/* KPI Cards */}
@@ -181,26 +281,26 @@ export default function DashboardPage() {
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                         <div>
                             <div className="stat-value">{stats.totalRepositories}</div>
-                            <div className="stat-label">Repositories Scanned</div>
+                            <div className="stat-label">{scanData ? 'Active Repository' : 'Repositories Scanned'}</div>
                         </div>
                         <div style={{ width: '40px', height: '40px', borderRadius: 'var(--radius-md)', background: 'rgba(99, 102, 241, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--accent-primary)' }}>
                             <FiDatabase size={20} />
                         </div>
                     </div>
-                    <div className="stat-trend up"><FiArrowUpRight size={14} /> +2 this week</div>
+                    <div className="stat-trend up"><FiArrowUpRight size={14} /> {scanData ? 'Live Data Mode' : '+2 this week'}</div>
                 </div>
 
                 <div className="glass-card stat-card">
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                         <div>
                             <div className="stat-value">{stats.totalFunctions.toLocaleString()}</div>
-                            <div className="stat-label">Functions Analyzed</div>
+                            <div className="stat-label">Total Graph Nodes</div>
                         </div>
                         <div style={{ width: '40px', height: '40px', borderRadius: 'var(--radius-md)', background: 'rgba(6, 182, 212, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--accent-secondary)' }}>
                             <FiCode size={20} />
                         </div>
                     </div>
-                    <div className="stat-trend up"><FiArrowUpRight size={14} /> +342 new</div>
+                    <div className="stat-trend up"><FiArrowUpRight size={14} /> {scanData ? 'Parsed from AST' : '+342 new'}</div>
                 </div>
 
                 <div className="glass-card stat-card">
@@ -213,7 +313,7 @@ export default function DashboardPage() {
                             <FiAlertTriangle size={20} />
                         </div>
                     </div>
-                    <div className="stat-trend down"><FiArrowDownRight size={14} /> -16 from last month</div>
+                    <div className="stat-trend down"><FiArrowDownRight size={14} /> {scanData ? 'Computed in real-time' : '-16 from last month'}</div>
                 </div>
 
                 <div className="glass-card stat-card">
@@ -226,7 +326,7 @@ export default function DashboardPage() {
                             <FiActivity size={20} />
                         </div>
                     </div>
-                    <div className="stat-trend up"><FiArrowUpRight size={14} /> +3% improvement</div>
+                    <div className="stat-trend up"><FiArrowUpRight size={14} /> {scanData ? 'Based on severity density' : '+3% improvement'}</div>
                 </div>
             </div>
 
@@ -262,13 +362,13 @@ export default function DashboardPage() {
                         Codebase Composition
                     </h3>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '32px' }}>
-                        <LanguageDonut />
+                        <LanguageDonut scanData={scanData} />
                         <div style={{ flex: 1 }}>
-                            {dashboardStats.codebaseLanguages.map((lang, i) => {
+                            {languages.map((lang, i) => {
                                 const colors = ['#6366f1', '#8b5cf6', '#06b6d4', '#22c55e', '#64748b'];
                                 return (
                                     <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
-                                        <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: colors[i], flexShrink: 0 }} />
+                                        <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: colors[i % colors.length], flexShrink: 0 }} />
                                         <div style={{ flex: 1, display: 'flex', justifyContent: 'space-between' }}>
                                             <span style={{ fontSize: '0.85rem' }}>{lang.language}</span>
                                             <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>{lang.percentage}% ({lang.files})</span>
@@ -286,8 +386,7 @@ export default function DashboardPage() {
                             <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--accent-primary-light)' }}>AI Insight</span>
                         </div>
                         <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
-                            Java codebase (45%) has the highest concentration of critical risks. Consider prioritizing
-                            the core-banking-engine for security review — 12 critical issues detected in transaction processing.
+                            {scanData ? `Live scan analyzed ${scanData.metrics.total_files} files showing ${scanData.risks.length} total risk nodes. Graph structure is now updated in real-time across the platform.` : `Java codebase (45%) has the highest concentration of critical risks. Consider prioritizing the core-banking-engine for security review.`}
                         </p>
                     </div>
                 </div>
@@ -302,7 +401,7 @@ export default function DashboardPage() {
                         Repository Health
                     </h3>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                        {repositories.map((repo) => (
+                        {repositories.slice(0, scanData ? 1 : 4).map((repo) => (
                             <div key={repo.id} style={{
                                 padding: '12px 16px',
                                 background: 'var(--bg-surface)',
@@ -315,21 +414,21 @@ export default function DashboardPage() {
                                     width: '8px',
                                     height: '8px',
                                     borderRadius: '50%',
-                                    background: repo.healthScore >= 80 ? 'var(--risk-low)' : repo.healthScore >= 60 ? 'var(--risk-medium)' : 'var(--risk-critical)',
+                                    background: (scanData ? stats.avgHealthScore : repo.healthScore) >= 80 ? 'var(--risk-low)' : (scanData ? stats.avgHealthScore : repo.healthScore) >= 60 ? 'var(--risk-medium)' : 'var(--risk-critical)',
                                     flexShrink: 0,
                                 }} />
                                 <div style={{ flex: 1 }}>
-                                    <div style={{ fontSize: '0.85rem', fontWeight: 600 }}>{repo.name}</div>
-                                    <div style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)' }}>{repo.language} • {repo.totalFiles} files</div>
+                                    <div style={{ fontSize: '0.85rem', fontWeight: 600 }}>{scanData ? repoUrl.split('/').pop() : repo.name}</div>
+                                    <div style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)' }}>{scanData ? 'Live Scan' : repo.language} • {scanData ? scanData.metrics.total_files : repo.totalFiles} files</div>
                                 </div>
                                 <div style={{ textAlign: 'right' }}>
                                     <div style={{
                                         fontSize: '0.9rem',
                                         fontWeight: 700,
-                                        color: repo.healthScore >= 80 ? 'var(--risk-low)' : repo.healthScore >= 60 ? 'var(--risk-medium)' : 'var(--risk-critical)',
-                                    }}>{repo.healthScore}%</div>
+                                        color: (scanData ? stats.avgHealthScore : repo.healthScore) >= 80 ? 'var(--risk-low)' : (scanData ? stats.avgHealthScore : repo.healthScore) >= 60 ? 'var(--risk-medium)' : 'var(--risk-critical)',
+                                    }}>{scanData ? stats.avgHealthScore : repo.healthScore}%</div>
                                     <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>
-                                        {repo.riskProfile.critical}C / {repo.riskProfile.high}H
+                                        {scanData ? `${stats.criticalRisks}C / ${stats.highRisks}H` : `${repo.riskProfile.critical}C / ${repo.riskProfile.high}H`}
                                     </div>
                                 </div>
                             </div>
@@ -357,9 +456,9 @@ export default function DashboardPage() {
                                     {severityIcons[act.severity] || <FiActivity style={{ color: 'var(--text-muted)' }} />}
                                 </div>
                                 <div style={{ flex: 1 }}>
-                                    <div style={{ fontSize: '0.85rem' }}>{act.message}</div>
+                                    <div style={{ fontSize: '0.85rem' }}>{scanData && act.id === '1' ? 'Live GitHub Repository Scan Completed' : act.message}</div>
                                     <div style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', display: 'flex', alignItems: 'center', gap: '6px', marginTop: '2px' }}>
-                                        <FiClock size={11} /> {act.time}
+                                        <FiClock size={11} /> {scanData && act.id === '1' ? 'Just now' : act.time}
                                     </div>
                                 </div>
                             </div>
@@ -390,41 +489,45 @@ export default function DashboardPage() {
                     <FiAlertTriangle size={18} style={{ color: 'var(--risk-critical)' }} />
                     Top Critical Risks
                 </h3>
-                <table className="data-table">
-                    <thead>
-                        <tr>
-                            <th>Risk</th>
-                            <th>Severity</th>
-                            <th>Category</th>
-                            <th>Downstream Impact</th>
-                            <th>Business Impact</th>
-                            <th>Effort</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {riskItems.filter(r => r.severity === 'critical' || r.severity === 'high').slice(0, 6).map((risk) => (
-                            <tr key={risk.id}>
-                                <td>
-                                    <div style={{ fontWeight: 600, fontSize: '0.85rem' }}>{risk.title}</div>
-                                    <div style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', marginTop: '2px' }}>{risk.nodeId}</div>
-                                </td>
-                                <td>
-                                    <span className={`badge badge-${risk.severity}`}>{risk.severity}</span>
-                                </td>
-                                <td style={{ textTransform: 'capitalize' }}>{risk.category}</td>
-                                <td>
-                                    <span style={{ fontWeight: 700, color: risk.affectedDownstream > 10 ? 'var(--risk-critical)' : 'var(--risk-medium)' }}>
-                                        {risk.affectedDownstream} nodes
-                                    </span>
-                                </td>
-                                <td style={{ fontSize: '0.8rem', maxWidth: '200px', color: 'var(--text-secondary)' }}>
-                                    {risk.businessImpact.slice(0, 60)}...
-                                </td>
-                                <td style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>{risk.estimatedEffort}</td>
+                {risks.length === 0 ? (
+                    <div style={{ textAlign: 'center', padding: '24px', color: 'var(--text-secondary)' }}>No critical risks detected.</div>
+                ) : (
+                    <table className="data-table">
+                        <thead>
+                            <tr>
+                                <th>Risk</th>
+                                <th>Severity</th>
+                                <th>Category</th>
+                                <th>Downstream Impact</th>
+                                <th>Business Impact</th>
+                                <th>Effort</th>
                             </tr>
-                        ))}
-                    </tbody>
-                </table>
+                        </thead>
+                        <tbody>
+                            {risks.filter(r => r.severity === 'critical' || r.severity === 'high').slice(0, 8).map((risk) => (
+                                <tr key={risk.id}>
+                                    <td>
+                                        <div style={{ fontWeight: 600, fontSize: '0.85rem' }}>{risk.title}</div>
+                                        <div style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', marginTop: '2px' }}>{risk.nodeId}</div>
+                                    </td>
+                                    <td>
+                                        <span className={`badge badge-${risk.severity}`}>{risk.severity}</span>
+                                    </td>
+                                    <td style={{ textTransform: 'capitalize' }}>{risk.category}</td>
+                                    <td>
+                                        <span style={{ fontWeight: 700, color: risk.affectedDownstream > 10 ? 'var(--risk-critical)' : 'var(--risk-medium)' }}>
+                                            {risk.affectedDownstream} nodes
+                                        </span>
+                                    </td>
+                                    <td style={{ fontSize: '0.8rem', maxWidth: '200px', color: 'var(--text-secondary)' }}>
+                                        {risk.businessImpact ? risk.businessImpact.slice(0, 60) : 'Impact on local execution scope'}...
+                                    </td>
+                                    <td style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>{risk.estimatedEffort}</td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                )}
             </div>
         </div>
     );

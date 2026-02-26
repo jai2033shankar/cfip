@@ -2,9 +2,10 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { FiFilter, FiMaximize2, FiMinimize2, FiZoomIn, FiZoomOut, FiRefreshCw, FiInfo, FiX } from 'react-icons/fi';
-import { graphNodes, graphEdges } from '@/lib/seed-data';
+import { graphNodes as seedNodes, graphEdges as seedEdges } from '@/lib/seed-data';
 import type { GraphNode } from '@/lib/seed-data';
 import cytoscape from 'cytoscape';
+import { useScan } from '@/lib/scan-context';
 
 const riskColors: Record<string, string> = {
     critical: '#ef4444',
@@ -43,6 +44,10 @@ export default function GraphPage() {
     const [filterRisk, setFilterRisk] = useState<string>('all');
     const [isFullscreen, setIsFullscreen] = useState(false);
     const [mounted, setMounted] = useState(false);
+    const { scanData } = useScan();
+
+    const currentNodes = scanData ? scanData.nodes : seedNodes;
+    const currentEdges = scanData ? scanData.edges : seedEdges;
 
     useEffect(() => { setMounted(true); }, []);
 
@@ -108,10 +113,10 @@ export default function GraphPage() {
                 },
             ],
             elements: {
-                nodes: graphNodes
-                    .filter(n => filterType === 'all' || n.type === filterType)
-                    .filter(n => filterRisk === 'all' || n.risk === filterRisk)
-                    .map(n => ({
+                nodes: currentNodes
+                    .filter((n: any) => filterType === 'all' || n.type === filterType)
+                    .filter((n: any) => filterRisk === 'all' || n.risk === filterRisk)
+                    .map((n: any) => ({
                         data: {
                             id: n.id,
                             label: n.label,
@@ -121,15 +126,15 @@ export default function GraphPage() {
                             shape: typeShapes[n.type] || 'ellipse',
                         },
                     })),
-                edges: graphEdges
-                    .filter(e => {
-                        const validNodes = graphNodes
-                            .filter(n => filterType === 'all' || n.type === filterType)
-                            .filter(n => filterRisk === 'all' || n.risk === filterRisk)
-                            .map(n => n.id);
+                edges: currentEdges
+                    .filter((e: any) => {
+                        const validNodes = currentNodes
+                            .filter((n: any) => filterType === 'all' || n.type === filterType)
+                            .filter((n: any) => filterRisk === 'all' || n.risk === filterRisk)
+                            .map((n: any) => n.id);
                         return validNodes.includes(e.source) && validNodes.includes(e.target);
                     })
-                    .map(e => ({
+                    .map((e: any) => ({
                         data: {
                             id: e.id,
                             source: e.source,
@@ -154,7 +159,7 @@ export default function GraphPage() {
 
         cy.on('tap', 'node', (evt) => {
             const nodeId = evt.target.id();
-            const node = graphNodes.find(n => n.id === nodeId);
+            const node = currentNodes.find((n: any) => n.id === nodeId);
             setSelectedNode(node || null);
 
             // Highlight connected nodes
@@ -176,11 +181,11 @@ export default function GraphPage() {
         return () => {
             cy.destroy();
         };
-    }, [mounted, filterType, filterRisk]);
+    }, [mounted, filterType, filterRisk, currentNodes, currentEdges]);
 
     if (!mounted) return null;
 
-    const nodeTypes = ['all', ...new Set(graphNodes.map(n => n.type))];
+    const nodeTypes = ['all', ...new Set(currentNodes.map((n: any) => n.type))];
     const riskLevels = ['all', 'critical', 'high', 'medium', 'low'];
 
     return (
@@ -188,7 +193,7 @@ export default function GraphPage() {
             <div className="page-header">
                 <div className="breadcrumb"><span>CFIP</span> / Dependency Graph</div>
                 <h1>Dependency Graph Visualization</h1>
-                <p>Interactive dependency map across {graphNodes.length} nodes and {graphEdges.length} edges</p>
+                <p>Interactive dependency map across {currentNodes.length} nodes and {currentEdges.length} edges</p>
             </div>
 
             {/* Filters */}
@@ -197,7 +202,7 @@ export default function GraphPage() {
                     <FiFilter size={14} style={{ color: 'var(--text-muted)' }} />
                     <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Type:</span>
                 </div>
-                {nodeTypes.map(t => (
+                {nodeTypes.map((t: any) => (
                     <button key={t} className={`chip ${filterType === t ? 'active' : ''}`} onClick={() => setFilterType(t)}>
                         {t === 'all' ? 'All Types' : t.replace('_', ' ')}
                     </button>
@@ -314,7 +319,7 @@ export default function GraphPage() {
                                                 <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>LOC</div>
                                             </div>
                                         )}
-                                        {selectedNode.metrics.complexity && (
+                                        {selectedNode.metrics.complexity !== undefined && (
                                             <div style={{ padding: '8px', background: 'var(--bg-surface)', borderRadius: 'var(--radius-sm)', textAlign: 'center' }}>
                                                 <div style={{ fontSize: '1rem', fontWeight: 700, color: selectedNode.metrics.complexity > 30 ? 'var(--risk-critical)' : 'var(--risk-medium)' }}>{selectedNode.metrics.complexity}</div>
                                                 <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>Complexity</div>
@@ -339,9 +344,9 @@ export default function GraphPage() {
                             {/* Connected edges */}
                             <div className="divider" />
                             <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-secondary)' }}>Connections</div>
-                            {graphEdges.filter(e => e.source === selectedNode.id || e.target === selectedNode.id).slice(0, 8).map(edge => {
+                            {currentEdges.filter((e: any) => e.source === selectedNode.id || e.target === selectedNode.id).slice(0, 8).map((edge: any) => {
                                 const isSource = edge.source === selectedNode.id;
-                                const otherNode = graphNodes.find(n => n.id === (isSource ? edge.target : edge.source));
+                                const otherNode = currentNodes.find((n: any) => n.id === (isSource ? edge.target : edge.source));
                                 return (
                                     <div key={edge.id} style={{
                                         padding: '6px 10px',
@@ -353,7 +358,7 @@ export default function GraphPage() {
                                         gap: '6px',
                                     }}>
                                         <span style={{ color: 'var(--text-muted)' }}>{isSource ? '→' : '←'}</span>
-                                        <span style={{ fontSize: '0.75rem', color: 'var(--accent-secondary-light)', fontFamily: 'var(--font-mono)' }}>{edge.type}</span>
+                                        <span style={{ fontSize: '0.75rem', color: 'var(--accent-secondary-light)', fontFamily: 'var(--font-mono)' }}>{edge.type || 'deps'}</span>
                                         <span style={{ color: 'var(--text-secondary)' }}>{otherNode?.label || edge.target}</span>
                                     </div>
                                 );

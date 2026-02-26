@@ -29,6 +29,8 @@ const navItems = [
     { href: '/dashboard/settings', icon: <FiSettings />, label: 'Settings', badge: null },
 ];
 
+import { ScanProvider } from '@/lib/scan-context';
+
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
     const router = useRouter();
     const pathname = usePathname();
@@ -61,104 +63,106 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
     return (
         <div style={{ minHeight: '100vh', background: 'var(--bg-primary)' }}>
-            {/* Sidebar */}
-            <aside className={`sidebar ${collapsed ? 'collapsed' : ''}`}>
-                {/* Logo */}
-                <div className="sidebar-logo">
-                    <div className="logo-icon">CF</div>
-                    {!collapsed && <span className="logo-text">CFIP</span>}
-                </div>
+            <ScanProvider>
+                {/* Sidebar */}
+                <aside className={`sidebar ${collapsed ? 'collapsed' : ''}`}>
+                    {/* Logo */}
+                    <div className="sidebar-logo">
+                        <div className="logo-icon">CF</div>
+                        {!collapsed && <span className="logo-text">CFIP</span>}
+                    </div>
 
-                {/* Navigation */}
-                <nav className="sidebar-nav">
-                    {navItems.map((item, i) => {
-                        if ('section' in item && item.section) {
-                            return !collapsed ? (
-                                <div key={i} className="nav-section-label">{item.label}</div>
-                            ) : <div key={i} style={{ height: '16px' }} />;
-                        }
+                    {/* Navigation */}
+                    <nav className="sidebar-nav">
+                        {navItems.map((item, i) => {
+                            if ('section' in item && item.section) {
+                                return !collapsed ? (
+                                    <div key={i} className="nav-section-label">{item.label}</div>
+                                ) : <div key={i} style={{ height: '16px' }} />;
+                            }
 
-                        const isActive = item.href === '/dashboard'
-                            ? pathname === '/dashboard'
-                            : pathname?.startsWith(item.href || '');
+                            const isActive = item.href === '/dashboard'
+                                ? pathname === '/dashboard'
+                                : pathname?.startsWith(item.href || '');
 
-                        return (
-                            <Link
-                                key={i}
-                                href={item.href || '#'}
-                                className={`nav-item ${isActive ? 'active' : ''}`}
-                                title={collapsed ? item.label : undefined}
-                            >
-                                <span className="nav-icon">{item.icon}</span>
+                            return (
+                                <Link
+                                    key={i}
+                                    href={item.href || '#'}
+                                    className={`nav-item ${isActive ? 'active' : ''}`}
+                                    title={collapsed ? item.label : undefined}
+                                >
+                                    <span className="nav-icon">{item.icon}</span>
+                                    {!collapsed && (
+                                        <>
+                                            <span>{item.label}</span>
+                                            {item.badge && <span className="nav-badge">{item.badge}</span>}
+                                        </>
+                                    )}
+                                </Link>
+                            );
+                        })}
+                    </nav>
+
+                    {/* Collapse toggle */}
+                    <div style={{ padding: '12px', borderTop: '1px solid var(--border-glass)' }}>
+                        <button
+                            className="nav-item"
+                            onClick={() => setCollapsed(!collapsed)}
+                            style={{ justifyContent: collapsed ? 'center' : 'flex-start' }}
+                        >
+                            <span className="nav-icon">
+                                {collapsed ? <FiChevronRight /> : <FiChevronLeft />}
+                            </span>
+                            {!collapsed && <span>Collapse</span>}
+                        </button>
+                    </div>
+                </aside>
+
+                {/* Main Content */}
+                <div className={`main-content ${collapsed ? 'sidebar-collapsed' : ''}`}>
+                    {/* Header */}
+                    <header className="header">
+                        <div className="header-left">
+                            <div className="search-bar">
+                                <FiSearch size={16} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
+                                <input placeholder="Search nodes, functions, APIs..." />
+                                <span className="search-shortcut">⌘K</span>
+                            </div>
+                        </div>
+                        <div className="header-right">
+                            <button className="header-icon-btn" title="Terminal">
+                                <FiTerminal size={18} />
+                            </button>
+                            <button className="header-icon-btn" title="Documentation">
+                                <FiBookOpen size={18} />
+                            </button>
+                            <button className="header-icon-btn" title="Notifications" style={{ position: 'relative' }}>
+                                <FiBell size={18} />
+                                <span className="notification-dot" />
+                            </button>
+                            <div style={{ width: '1px', height: '24px', background: 'var(--border-secondary)', margin: '0 4px' }} />
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }}>
+                                <div className="avatar">{user.avatar}</div>
                                 {!collapsed && (
-                                    <>
-                                        <span>{item.label}</span>
-                                        {item.badge && <span className="nav-badge">{item.badge}</span>}
-                                    </>
+                                    <div>
+                                        <div style={{ fontSize: '0.85rem', fontWeight: 600 }}>{user.name}</div>
+                                        <div style={{ fontSize: '0.7rem', color: 'var(--text-tertiary)', textTransform: 'capitalize' }}>{user.role}</div>
+                                    </div>
                                 )}
-                            </Link>
-                        );
-                    })}
-                </nav>
+                            </div>
+                            <button className="header-icon-btn" onClick={handleLogout} title="Sign Out">
+                                <FiLogOut size={18} />
+                            </button>
+                        </div>
+                    </header>
 
-                {/* Collapse toggle */}
-                <div style={{ padding: '12px', borderTop: '1px solid var(--border-glass)' }}>
-                    <button
-                        className="nav-item"
-                        onClick={() => setCollapsed(!collapsed)}
-                        style={{ justifyContent: collapsed ? 'center' : 'flex-start' }}
-                    >
-                        <span className="nav-icon">
-                            {collapsed ? <FiChevronRight /> : <FiChevronLeft />}
-                        </span>
-                        {!collapsed && <span>Collapse</span>}
-                    </button>
+                    {/* Page content */}
+                    <main className="page-content">
+                        {children}
+                    </main>
                 </div>
-            </aside>
-
-            {/* Main Content */}
-            <div className={`main-content ${collapsed ? 'sidebar-collapsed' : ''}`}>
-                {/* Header */}
-                <header className="header">
-                    <div className="header-left">
-                        <div className="search-bar">
-                            <FiSearch size={16} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
-                            <input placeholder="Search nodes, functions, APIs..." />
-                            <span className="search-shortcut">⌘K</span>
-                        </div>
-                    </div>
-                    <div className="header-right">
-                        <button className="header-icon-btn" title="Terminal">
-                            <FiTerminal size={18} />
-                        </button>
-                        <button className="header-icon-btn" title="Documentation">
-                            <FiBookOpen size={18} />
-                        </button>
-                        <button className="header-icon-btn" title="Notifications" style={{ position: 'relative' }}>
-                            <FiBell size={18} />
-                            <span className="notification-dot" />
-                        </button>
-                        <div style={{ width: '1px', height: '24px', background: 'var(--border-secondary)', margin: '0 4px' }} />
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }}>
-                            <div className="avatar">{user.avatar}</div>
-                            {!collapsed && (
-                                <div>
-                                    <div style={{ fontSize: '0.85rem', fontWeight: 600 }}>{user.name}</div>
-                                    <div style={{ fontSize: '0.7rem', color: 'var(--text-tertiary)', textTransform: 'capitalize' }}>{user.role}</div>
-                                </div>
-                            )}
-                        </div>
-                        <button className="header-icon-btn" onClick={handleLogout} title="Sign Out">
-                            <FiLogOut size={18} />
-                        </button>
-                    </div>
-                </header>
-
-                {/* Page content */}
-                <main className="page-content">
-                    {children}
-                </main>
-            </div>
+            </ScanProvider>
         </div>
     );
 }

@@ -2,10 +2,11 @@
 
 import { useState } from 'react';
 import {
-    FiAlertTriangle, FiTarget, FiZap, FiChevronRight, FiArrowRight,
-    FiDatabase, FiGlobe, FiShield, FiClock, FiActivity, FiCpu
+    FiAlertTriangle, FiTarget, FiChevronRight,
+    FiDatabase, FiGlobe, FiShield, FiClock, FiCpu
 } from 'react-icons/fi';
-import { riskItems, graphNodes, impactSimulations } from '@/lib/seed-data';
+import { riskItems as seedRisks, graphNodes as seedNodes, impactSimulations } from '@/lib/seed-data';
+import { useScan } from '@/lib/scan-context';
 
 const categories = ['all', 'reliability', 'compliance', 'security', 'performance', 'maintenance', 'architecture'];
 
@@ -14,6 +15,26 @@ export default function RiskPage() {
     const [selectedSeverity, setSelectedSeverity] = useState('all');
     const [selectedNode, setSelectedNode] = useState<string | null>(null);
     const [showSimulation, setShowSimulation] = useState(false);
+    const { scanData } = useScan();
+
+    const currentNodes = scanData ? scanData.nodes : seedNodes;
+    let riskItems = seedRisks;
+
+    if (scanData) {
+        riskItems = scanData.risks.map((r: any, i: number) => ({
+            id: `risk-${i}`,
+            title: r.reason,
+            severity: r.severity,
+            category: r.risk_type.split('_').join(' '),
+            nodeId: r.node_id,
+            affectedDownstream: r.affected_downstream_count,
+            businessImpact: `Impact on ${scanData.nodes.find((n: any) => n.id === r.node_id)?.label || 'unknown'} and downstream dependencies`,
+            estimatedEffort: r.recommendation.length > 50 ? '3 days' : '1 day',
+            type: r.risk_type,
+            description: r.reason,
+            recommendation: r.recommendation
+        }));
+    }
 
     const filteredRisks = riskItems.filter(r =>
         (selectedCategory === 'all' || r.category === selectedCategory) &&
@@ -21,7 +42,7 @@ export default function RiskPage() {
     );
 
     const activeSimulation = impactSimulations.find(s => s.changedNode === selectedNode);
-    const simulableNodes = graphNodes.filter(n => n.type === 'function' || n.type === 'service');
+    const simulableNodes = currentNodes;
 
     return (
         <div className="animate-fade-in">
@@ -140,7 +161,7 @@ export default function RiskPage() {
                             <div className="glass-card-static" style={{ padding: '24px', marginBottom: '16px' }}>
                                 <h3 style={{ fontSize: '1rem', marginBottom: '16px' }}>
                                     Impact Cascade for <span style={{ color: 'var(--accent-primary-light)', fontFamily: 'var(--font-mono)' }}>
-                                        {graphNodes.find(n => n.id === selectedNode)?.label}
+                                        {currentNodes.find((n: any) => n.id === selectedNode)?.label}
                                     </span>
                                 </h3>
 
@@ -183,7 +204,7 @@ export default function RiskPage() {
                                             <div style={{ flex: 1 }}>
                                                 <div style={{ fontSize: '0.85rem', fontWeight: 600 }}>
                                                     <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--accent-secondary-light)' }}>
-                                                        {graphNodes.find(n => n.id === impact.nodeId)?.label || impact.nodeId}
+                                                        {currentNodes.find((n: any) => n.id === impact.nodeId)?.label || impact.nodeId}
                                                     </span>
                                                 </div>
                                                 <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{impact.description}</div>

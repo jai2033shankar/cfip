@@ -1,8 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { FiShield, FiUsers, FiFileText, FiClock, FiFilter, FiDownload, FiSearch, FiActivity, FiSettings, FiKey, FiCpu } from 'react-icons/fi';
-import { auditLog, scanHistory } from '@/lib/seed-data';
+import { auditLog as seedAuditLog, scanHistory as seedScanHistory } from '@/lib/seed-data';
 
 const typeColors: Record<string, string> = {
     scan: '#6366f1',
@@ -23,6 +23,14 @@ const typeIcons: Record<string, React.ReactNode> = {
 export default function GovernancePage() {
     const [tab, setTab] = useState<'audit' | 'scans' | 'rbac'>('audit');
     const [logFilter, setLogFilter] = useState('all');
+    const [auditLog, setAuditLog] = useState<any[]>([]);
+
+    useEffect(() => {
+        // Load dynamically saved local logs (if any exist from scans, etc) + seed logs
+        const localLogsRaw = localStorage.getItem('cfip_audit_logs');
+        const localLogs = localLogsRaw ? JSON.parse(localLogsRaw) : [];
+        setAuditLog([...localLogs, ...seedAuditLog].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()));
+    }, []);
 
     const filteredLogs = logFilter === 'all' ? auditLog : auditLog.filter(l => l.type === logFilter);
 
@@ -115,7 +123,7 @@ export default function GovernancePage() {
                             </tr>
                         </thead>
                         <tbody>
-                            {scanHistory.map(scan => (
+                            {seedScanHistory.map(scan => (
                                 <tr key={scan.id}>
                                     <td style={{ fontWeight: 600, fontSize: '0.85rem' }}>{scan.repository}</td>
                                     <td style={{ fontFamily: 'var(--font-mono)', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>

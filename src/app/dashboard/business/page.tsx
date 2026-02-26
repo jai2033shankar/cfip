@@ -6,20 +6,38 @@ import { businessCapabilities } from '@/lib/seed-data';
 
 const domains = ['All', 'Operations', 'Compliance', 'Customer Management', 'Capital Markets', 'Finance', 'Security'];
 
-const bianTaxonomy = [
-    { domain: 'Sales & Service', capabilities: ['Product Directory', 'Customer Offer', 'Customer Billing'], coverage: 65 },
-    { domain: 'Operations', capabilities: ['Payment Processing', 'Treasury', 'Trade Settlement', 'Account Management'], coverage: 78 },
-    { domain: 'Risk & Compliance', capabilities: ['AML Screening', 'KYC Verification', 'Regulatory Reporting', 'Risk Assessment'], coverage: 85 },
-    { domain: 'Business Support', capabilities: ['Customer Relationship', 'Correspondence', 'Document Management'], coverage: 42 },
-    { domain: 'Business Intelligence', capabilities: ['Analytical Reporting', 'Fraud Detection', 'Performance Analysis'], coverage: 55 },
+const BIAN_DOMAINS = [
+    { name: 'Operations', capabilities: ['Payment Processing', 'Treasury Operations'] },
+    { name: 'Compliance', capabilities: ['AML Compliance', 'Regulatory Reporting'] },
+    { name: 'Customer Management', capabilities: ['Customer Onboarding'] },
+    { name: 'Capital Markets', capabilities: ['Trade Processing'] },
+    { name: 'Finance', capabilities: ['Financial Accounting'] },
+    { name: 'Security', capabilities: ['Access Control'] },
 ];
 
+import { useScan } from '@/lib/scan-context';
+
 export default function BusinessPage() {
+    const { scanData } = useScan();
     const [selectedDomain, setSelectedDomain] = useState('All');
 
+    const currentCapabilities = scanData?.business_mappings || businessCapabilities;
+
     const filtered = selectedDomain === 'All'
-        ? businessCapabilities
-        : businessCapabilities.filter(bc => bc.domain === selectedDomain);
+        ? currentCapabilities
+        : currentCapabilities.filter((bc: any) => bc.domain === selectedDomain);
+
+    // Dynamic Taxonomy recalculation based on actual scan mappings
+    const activeTaxonomy = BIAN_DOMAINS.map(b_domain => {
+        const matchingCaps = currentCapabilities.filter((bc: any) => bc.domain === b_domain.name);
+        const mapped = matchingCaps.length;
+        const total = b_domain.capabilities.length;
+        return {
+            domain: b_domain.name,
+            capabilities: b_domain.capabilities,
+            coverage: total > 0 ? Math.round((mapped / total) * 100) : 0
+        };
+    });
 
     return (
         <div className="animate-fade-in">
@@ -40,7 +58,7 @@ export default function BusinessPage() {
 
             {/* Capability Cards */}
             <div className="grid-2" style={{ marginBottom: '24px' }}>
-                {filtered.map(bc => (
+                {filtered.map((bc: any) => (
                     <div key={bc.id} className="glass-card" style={{ padding: '20px' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
                             <div>
@@ -77,7 +95,7 @@ export default function BusinessPage() {
 
                         {/* Linked modules */}
                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
-                            {bc.modules.map((mod, i) => (
+                            {bc.modules?.map((mod: string, i: number) => (
                                 <span key={i} style={{
                                     padding: '2px 8px',
                                     background: 'rgba(99, 102, 241, 0.08)',
@@ -99,7 +117,7 @@ export default function BusinessPage() {
                     BIAN Service Domain Coverage
                 </h3>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                    {bianTaxonomy.map((domain, i) => (
+                    {activeTaxonomy.map((domain, i) => (
                         <div key={i} style={{ padding: '16px', background: 'var(--bg-surface)', borderRadius: 'var(--radius-md)' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
                                 <span style={{ fontWeight: 600, fontSize: '0.9rem' }}>{domain.domain}</span>

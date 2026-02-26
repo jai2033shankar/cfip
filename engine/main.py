@@ -15,6 +15,8 @@ from services.risk_scorer import RiskScorer
 from services.code_scanner import CodeScanner
 from services.github_client import GitHubClient
 from services.business_mapper import BusinessMapper
+from services.bfsi_analyzer import BFSIAnalyzer
+from services.remediation_generator import RemediationGenerator
 
 app = FastAPI(
     title="CFIP Analysis Engine",
@@ -37,6 +39,8 @@ risk_scorer = RiskScorer()
 code_scanner = CodeScanner()
 github_client = GitHubClient()
 business_mapper = BusinessMapper()
+bfsi_analyzer = BFSIAnalyzer()
+remediation_generator = RemediationGenerator()
 
 
 class ScanRequest(BaseModel):
@@ -51,6 +55,7 @@ class AnalysisResponse(BaseModel):
     risks: list
     metrics: dict
     business_mappings: list
+    remediations: list
 
 
 @app.get("/health")
@@ -83,8 +88,15 @@ def analyze_codebase(request: ScanRequest):
 
     # Step 4: Score risks
     risks = risk_scorer.score_all(graph_data)
+    
+    # Step 5: BFSI domain analysis (append to risks)
+    domain_impacts = bfsi_analyzer.analyze_domain(all_nodes)
+    risks.extend(domain_impacts)
+    
+    # Step 6: Generate AI Remediations based on risks
+    remediations = remediation_generator.generate_from_risks(risks)
 
-    # Step 5: Map to business capabilities
+    # Step 7: Map to business capabilities
     mappings = business_mapper.map_to_capabilities(all_nodes)
 
     return AnalysisResponse(
@@ -93,6 +105,7 @@ def analyze_codebase(request: ScanRequest):
         risks=risks,
         metrics=scan_result["metrics"],
         business_mappings=mappings,
+        remediations=remediations,
     )
 
 

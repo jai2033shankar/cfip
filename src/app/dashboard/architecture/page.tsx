@@ -1,11 +1,37 @@
 'use client';
 
 import { FiLayers, FiArrowDown, FiArrowRight, FiBox, FiServer, FiDatabase, FiGlobe, FiShield, FiCpu } from 'react-icons/fi';
-import { architectureLayers, graphNodes, graphEdges } from '@/lib/seed-data';
+import { graphNodes, graphEdges } from '@/lib/seed-data';
+
+import { useScan } from '@/lib/scan-context';
 
 export default function ArchitecturePage() {
-    const modules = graphNodes.filter(n => n.type === 'module');
-    const moduleEdges = graphEdges.filter(e => e.source.startsWith('mod-') && e.target.startsWith('mod-'));
+    const { scanData } = useScan();
+
+    const currentNodes = scanData?.nodes || graphNodes;
+    const currentEdges = scanData?.edges || graphEdges;
+
+    const modules = currentNodes.filter((n: any) => n.type === 'module');
+    const moduleEdges = currentEdges.filter((e: any) => e.source.startsWith('mod-') && e.target.startsWith('mod-'));
+
+    // Dynamic Architecture Layers
+    const currentArchitectureLayers = [
+        {
+            name: 'Client Applications',
+            color: '#06b6d4',
+            components: ['Web Dashboard (React)', 'Mobile App (iOS/Android)', 'API Gateway']
+        },
+        {
+            name: 'Business Logic Services',
+            color: '#6366f1',
+            components: currentNodes.filter((n: any) => n.type === 'service' || n.type === 'module').slice(0, 5).map((n: any) => n.label)
+        },
+        {
+            name: 'Data & Persistence',
+            color: '#10b981',
+            components: ['PostgreSQL (Primary DB)', 'Redis (Caching)', 'Kafka (Event Stream)', 'S3 (Document Store)']
+        }
+    ];
 
     return (
         <div className="animate-fade-in">
@@ -22,7 +48,7 @@ export default function ArchitecturePage() {
                     System Layer Architecture
                 </h3>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                    {architectureLayers.map((layer, i) => (
+                    {currentArchitectureLayers.map((layer, i) => (
                         <div key={i}>
                             <div style={{
                                 padding: '16px 20px',
@@ -50,7 +76,7 @@ export default function ArchitecturePage() {
                                     ))}
                                 </div>
                             </div>
-                            {i < architectureLayers.length - 1 && (
+                            {i < currentArchitectureLayers.length - 1 && (
                                 <div style={{ display: 'flex', justifyContent: 'center', padding: '2px 0' }}>
                                     <FiArrowDown size={14} style={{ color: 'var(--text-muted)' }} />
                                 </div>
@@ -68,9 +94,9 @@ export default function ArchitecturePage() {
                         Module Dependencies
                     </h3>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                        {modules.map(mod => {
-                            const outgoing = moduleEdges.filter(e => e.source === mod.id);
-                            const incoming = moduleEdges.filter(e => e.target === mod.id);
+                        {modules.map((mod: any) => {
+                            const outgoing = moduleEdges.filter((e: any) => e.source === mod.id);
+                            const incoming = moduleEdges.filter((e: any) => e.target === mod.id);
                             return (
                                 <div key={mod.id} style={{
                                     padding: '12px 16px',

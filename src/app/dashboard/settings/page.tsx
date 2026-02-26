@@ -1,9 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
-    FiSettings, FiGithub, FiDatabase, FiCpu, FiSliders, FiShield, FiSave,
-    FiCheck, FiAlertTriangle, FiKey, FiGlobe, FiServer, FiActivity
+    FiGithub, FiCpu, FiSliders, FiShield, FiSave,
+    FiCheck, FiKey, FiGlobe, FiServer, FiActivity, FiCheckCircle, FiAlertTriangle
 } from 'react-icons/fi';
 
 export default function SettingsPage() {
@@ -14,6 +14,15 @@ export default function SettingsPage() {
     const [ollamaModel, setOllamaModel] = useState('codellama:13b');
     const [saved, setSaved] = useState(false);
 
+    useEffect(() => {
+        const storedPAT = localStorage.getItem('cfip_github_pat');
+        const storedOrg = localStorage.getItem('cfip_github_org');
+        setTimeout(() => {
+            if (storedPAT) setGithubPAT(storedPAT);
+            if (storedOrg) setGithubOrg(storedOrg);
+        }, 0);
+    }, []);
+
     const [thresholds, setThresholds] = useState({
         criticalDownstream: 40,
         highDownstream: 20,
@@ -23,6 +32,10 @@ export default function SettingsPage() {
     });
 
     const handleSave = () => {
+        if (activeTab === 'github') {
+            localStorage.setItem('cfip_github_pat', githubPAT);
+            localStorage.setItem('cfip_github_org', githubOrg);
+        }
         setSaved(true);
         setTimeout(() => setSaved(false), 2000);
     };

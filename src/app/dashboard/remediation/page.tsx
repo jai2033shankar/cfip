@@ -1,8 +1,9 @@
 'use client';
 
 import { useState } from 'react';
-import { FiCpu, FiCheck, FiX, FiTrendingUp, FiClock, FiShield, FiZap, FiCode, FiActivity, FiTarget } from 'react-icons/fi';
-import { remediationSuggestions } from '@/lib/seed-data';
+import { FiCpu, FiCheck, FiX, FiTrendingUp, FiClock, FiShield, FiZap, FiCode, FiActivity, FiTarget, FiAlertTriangle } from 'react-icons/fi';
+import { remediationSuggestions as seedRemediations } from '@/lib/seed-data';
+import { useScan } from '@/lib/scan-context';
 
 const categoryIcons: Record<string, React.ReactNode> = {
     architecture: <FiTarget size={16} />,
@@ -23,20 +24,23 @@ const categoryColors: Record<string, string> = {
 };
 
 export default function RemediationPage() {
+    const { scanData } = useScan();
     const [filter, setFilter] = useState('all');
     const [acceptedIds, setAcceptedIds] = useState<Set<string>>(new Set());
     const [rejectedIds, setRejectedIds] = useState<Set<string>>(new Set());
 
-    const categories = ['all', ...new Set(remediationSuggestions.map(r => r.category))];
-    const filtered = filter === 'all' ? remediationSuggestions : remediationSuggestions.filter(r => r.category === filter);
+    const currentRemediations = scanData?.remediations || seedRemediations;
 
-    const totalRiskReduction = remediationSuggestions
-        .filter(r => acceptedIds.has(r.id))
-        .reduce((sum, r) => sum + r.riskReduction, 0);
+    const categories = ['all', ...Array.from(new Set(currentRemediations.map((r: any) => r.category)))];
+    const filtered = filter === 'all' ? currentRemediations : currentRemediations.filter((r: any) => r.category === filter);
 
-    const totalEffort = remediationSuggestions
-        .filter(r => acceptedIds.has(r.id))
-        .reduce((sum, r) => sum + r.effortDays, 0);
+    const totalRiskReduction = currentRemediations
+        .filter((r: any) => acceptedIds.has(r.id))
+        .reduce((sum: number, r: any) => sum + r.riskReduction, 0);
+
+    const totalEffort = currentRemediations
+        .filter((r: any) => acceptedIds.has(r.id))
+        .reduce((sum: number, r: any) => sum + r.effortDays, 0);
 
     return (
         <div className="animate-fade-in">
@@ -49,7 +53,7 @@ export default function RemediationPage() {
             {/* Summary Cards */}
             <div className="grid-4" style={{ marginBottom: '24px' }}>
                 <div className="glass-card stat-card">
-                    <div className="stat-value">{remediationSuggestions.length}</div>
+                    <div className="stat-value">{currentRemediations.length}</div>
                     <div className="stat-label">Total Suggestions</div>
                 </div>
                 <div className="glass-card stat-card">
@@ -128,7 +132,7 @@ export default function RemediationPage() {
                                     </div>
 
                                     <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', marginBottom: '12px' }}>
-                                        {suggestion.affectedFiles.map((f, i) => (
+                                        {suggestion.affectedFiles && suggestion.affectedFiles.map((f: string, i: number) => (
                                             <span key={i} style={{
                                                 padding: '2px 8px',
                                                 background: 'var(--bg-surface)',

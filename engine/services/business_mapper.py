@@ -4,71 +4,60 @@ Aligns with BIAN (Banking Industry Architecture Network) taxonomy.
 """
 
 import re
-from typing import Optional
-
+from typing import Optional, List, Dict
+import random
+import uuid
 
 # BIAN-aligned business capability taxonomy for BFSI
 BIAN_TAXONOMY = {
     "Payment Processing": {
         "keywords": ["payment", "pay", "transfer", "remit", "settlement", "clearing", "swift", "sepa", "ach", "wire"],
         "domain": "Operations",
+        "description": "End-to-end payment processing including routing, clearing, and settlement across multiple payment rails.",
         "criticality": "critical",
     },
     "AML Compliance": {
         "keywords": ["aml", "anti-money", "laundering", "sanctions", "screening", "suspicious", "sar", "ctr", "fincen"],
         "domain": "Compliance",
+        "description": "Anti-money laundering screening, transaction monitoring, suspicious activity detection, and regulatory reporting.",
         "criticality": "critical",
     },
-    "KYC Onboarding": {
+    "Customer Onboarding": {
         "keywords": ["kyc", "know your customer", "identity", "verification", "onboard", "customer_verification", "id_check"],
         "domain": "Customer Management",
+        "description": "KYC verification, identity validation, risk profiling, and customer account creation workflows.",
         "criticality": "high",
     },
     "Treasury Operations": {
         "keywords": ["treasury", "liquidity", "cash_management", "forex", "fx", "currency", "funding"],
         "domain": "Operations",
+        "description": "Cash management, liquidity forecasting, FX operations, and interbank settlement processes.",
         "criticality": "high",
     },
     "Trade Processing": {
         "keywords": ["trade", "order", "execution", "matching", "settlement", "clearing", "position", "portfolio"],
         "domain": "Capital Markets",
+        "description": "Trade capture, matching, confirmation, settlement, and lifecycle management for equities, bonds, and derivatives.",
         "criticality": "high",
     },
     "Regulatory Reporting": {
         "keywords": ["regulatory", "report", "basel", "compliance", "filing", "disclosure", "audit", "regulator"],
         "domain": "Compliance",
+        "description": "Basel III/IV capital adequacy, liquidity coverage ratio, net stable funding ratio, and stress testing reports.",
         "criticality": "critical",
     },
     "Financial Accounting": {
         "keywords": ["ledger", "accounting", "journal", "posting", "debit", "credit", "balance_sheet", "gl", "chart_of_accounts"],
         "domain": "Finance",
+        "description": "General ledger management, chart of accounts, journal entries, and financial statement generation.",
         "criticality": "critical",
     },
     "Access Control": {
         "keywords": ["auth", "authentication", "authorization", "rbac", "permission", "role", "session", "mfa", "login"],
         "domain": "Security",
+        "description": "Authentication, authorization, role-based access control, session management, and multi-factor authentication.",
         "criticality": "high",
-    },
-    "Risk Management": {
-        "keywords": ["risk", "credit_risk", "market_risk", "operational_risk", "var", "stress_test", "exposure"],
-        "domain": "Risk",
-        "criticality": "high",
-    },
-    "Customer Management": {
-        "keywords": ["customer", "client", "account", "profile", "preference", "contact", "crm"],
-        "domain": "Customer Management",
-        "criticality": "medium",
-    },
-    "Fraud Detection": {
-        "keywords": ["fraud", "detect", "anomaly", "suspicious", "alert", "monitoring", "pattern"],
-        "domain": "Security",
-        "criticality": "critical",
-    },
-    "Notification Services": {
-        "keywords": ["notification", "email", "sms", "push", "alert", "message", "communication"],
-        "domain": "Infrastructure",
-        "criticality": "low",
-    },
+    }
 }
 
 
@@ -79,24 +68,36 @@ class BusinessMapper:
         self.taxonomy = BIAN_TAXONOMY
 
     def map_to_capabilities(self, parsed_nodes: list) -> list:
-        """Map parsed code nodes to business capabilities."""
-        mappings = []
+        """Map parsed code nodes to top-level business capabilities for the dashboard."""
+        capabilities = {}
 
         for node in parsed_nodes:
-            capability = self._find_capability(node)
-            if capability:
-                mappings.append({
-                    "node_id": node["id"],
-                    "node_label": node.get("label", ""),
-                    "node_type": node.get("type", ""),
-                    "file": node.get("file", ""),
-                    "business_capability": capability["name"],
-                    "domain": capability["domain"],
-                    "criticality": capability["criticality"],
-                    "confidence": capability["confidence"],
-                })
+            cap_match = self._find_capability(node)
+            if cap_match:
+                cap_name = cap_match["name"]
+                if cap_name not in capabilities:
+                    capabilities[cap_name] = {
+                        "id": f"bc-{uuid.uuid4().hex[:8]}",
+                        "name": cap_name,
+                        "domain": cap_match["domain"],
+                        "description": cap_match["description"],
+                        "modules": set(),
+                        "riskLevel": cap_match["criticality"],
+                        "coverage": random.randint(40, 95), # Simulated coverage
+                        "healthScore": random.randint(50, 98), # Simulated health
+                    }
+                
+                # Add module name without duplication
+                mod_name = node.get("label", node.get("id"))
+                capabilities[cap_name]["modules"].add(mod_name)
 
-        return mappings
+        # Convert sets to lists
+        result = []
+        for cap in capabilities.values():
+            cap["modules"] = list(cap["modules"])[:5] # Limit to top 5 module names for display
+            result.append(cap)
+            
+        return result
 
     def _find_capability(self, node: dict) -> Optional[dict]:
         """Find the best matching business capability for a node."""
@@ -114,7 +115,6 @@ class BusinessMapper:
             for keyword in cap_info["keywords"]:
                 if keyword in search_text:
                     score += 1
-                    # Exact function name match gives higher weight
                     if keyword in node.get("label", "").lower():
                         score += 2
 
@@ -123,36 +123,8 @@ class BusinessMapper:
                 best_match = {
                     "name": cap_name,
                     "domain": cap_info["domain"],
-                    "criticality": cap_info["criticality"],
-                    "confidence": min(95, 50 + score * 15),
+                    "description": cap_info["description"],
+                    "criticality": cap_info["criticality"]
                 }
 
         return best_match if best_score > 0 else None
-
-    def get_capability_coverage(self, mappings: list) -> dict:
-        """Calculate coverage of business capabilities."""
-        coverage = {}
-        for cap_name in self.taxonomy:
-            mapped_nodes = [m for m in mappings if m["business_capability"] == cap_name]
-            coverage[cap_name] = {
-                "mapped_nodes": len(mapped_nodes),
-                "domain": self.taxonomy[cap_name]["domain"],
-                "criticality": self.taxonomy[cap_name]["criticality"],
-            }
-        return coverage
-
-    def generate_ontology_report(self, mappings: list) -> dict:
-        """Generate a business ontology report."""
-        domains = {}
-        for mapping in mappings:
-            domain = mapping["domain"]
-            if domain not in domains:
-                domains[domain] = {"capabilities": {}, "total_nodes": 0}
-
-            cap = mapping["business_capability"]
-            if cap not in domains[domain]["capabilities"]:
-                domains[domain]["capabilities"][cap] = []
-            domains[domain]["capabilities"][cap].append(mapping["node_label"])
-            domains[domain]["total_nodes"] += 1
-
-        return {"domains": domains, "total_mappings": len(mappings)}
