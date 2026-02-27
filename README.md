@@ -56,11 +56,17 @@ Pre-commit risk radar with severity scoring, category filtering, and **what-if a
 ### 6. Business Intelligence Layer
 Code-to-business capability mapping dynamically aligned with the **BIAN (Banking Industry Architecture Network)** framework. Calculates live tracking coverage across domains like Operations, Compliance, Security, Customer Management, Capital Markets, and Finance.
 
-### 7. AI Remediation Engine [New]
+### 7. AI Remediation Engine
 AI-generated remediation suggestions from discovered technical debt and architecture smells. Ranks with expected Risk Reduction scores, Confidence, and actionable Effort estimates (in engineering days), complete with an accept/reject audit workflow.
 
-### 8. Governance & Audit [New]
+### 8. Governance & Audit
 Local-storage backed active Enterprise Audit trail that captures interactions like 'Live Repository Scan Initiated' with a timestamp to record governance activity within the UI natively. RBAC role management for Admin, Architect, Developer, and Auditor personas.
+
+### 9. Context-Aware AI Copilot (RAG) [New]
+Conversational AI agent powered by local `gemma3:latest` LLM. It utilizes a Retrieval-Augmented Generation (RAG) pipeline backed by `ChromaDB` and `bge-m3:latest` embeddings to provide persistent, accurate querying across massive repositories without losing context.
+
+### 10. General Engineering Domain Analyzer [New]
+Beyond BFSI, the platform now flags universal engineering risks mapped to domains like: **DevOps/CI-CD Pipelines** (e.g. GitHub Actions), **Infrastructure as Code** (Terraform, Docker), **Auth Security Configurations**, and **Database Schema** design patterns.
 
 ---
 
@@ -99,10 +105,10 @@ Local-storage backed active Enterprise Audit trail that captures interactions li
 ├─────────────────────────────────────────────────────────────┤
 │                   INTELLIGENCE LAYER                         │
 │  NetworkX Graph • Impact Simulation • Anti-Pattern Detection │
-│  Ollama LLM (on-prem) • Confidence Scoring                  │
+│  Local Ollama `gemma3` • RAG Context Injection               │
 ├─────────────────────────────────────────────────────────────┤
 │                    DATA LAYER                                │
-│  SQLite / Neo4j • GitHub API • Local File System             │
+│  SQLite / Neo4j • ChromaDB (Vector) • GitHub API             │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -251,8 +257,9 @@ CFIP is built with BFSI regulatory requirements at its core:
 | **Backend** | Python FastAPI |
 | **Graph Engine** | NetworkX |
 | **Auth** | Custom credentials (NextAuth.js hooks) |
-| **LLM** | Ollama (CodeLlama, DeepSeek Coder, StarCoder) |
-| **Database** | SQLite (demo) / Neo4j (production) |
+| **LLM (Chat)** | Ollama (`gemma3:latest`) |
+| **LLM (Embed)** | Ollama (`bge-m3:latest`) |
+| **Database** | SQLite (demo) / Neo4j (prod) / ChromaDB (Vectors) |
 
 ---
 
