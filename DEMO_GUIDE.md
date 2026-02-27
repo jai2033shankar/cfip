@@ -77,6 +77,13 @@ This is the pinnacle of the demo, proving that the codebase is completely embedd
 2. Show the Enterprise Audit Trail at the bottom.
 3. It actively logs actions, like when you just initiated the repository scan. This proves compliance and traceability for regulated workloads.
 
+### Step 7: Multi-Tenancy & Cloud LLMs
+1. Navigate to **System > Settings**.
+2. Show the **AI Model Configuration** tab. Point out that the platform defaults to local `Ollama gemma3` for strict data privacy.
+3. Scroll down to **Premium Cloud Connections**. Explain that Premium/Enterprise tenants can bring their own keys (OpenAI GPT-4o, Anthropic Claude 3.5) for enhanced inference if regulatory boundaries allow.
+4. Navigate to the **Super Admin** portal (`/superadmin`). (You may need to manually type this in the URL bar for the demo, or log out and log in as SuperAdmin).
+5. Show the active workspaces and demonstrate how changing the dropdown to `Enterprise` instantly unlocks Cloud LLM API access in the backend logic.
+
 ---
 
 ## 🛑 Troubleshooting
