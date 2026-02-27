@@ -6,20 +6,22 @@ import Link from 'next/link';
 import {
     FiGrid, FiGitBranch, FiShield, FiActivity, FiLayers, FiCpu, FiSettings,
     FiFileText, FiSearch, FiBell, FiChevronLeft, FiChevronRight, FiLogOut,
-    FiFolder, FiAlertTriangle, FiTarget, FiBookOpen, FiTerminal
+    FiFolder, FiAlertTriangle, FiTarget, FiBookOpen, FiTerminal, FiBriefcase, FiMessageSquare
 } from 'react-icons/fi';
 import { getUserFromStorage, clearUserFromStorage, AuthUser } from '@/lib/auth';
 
 const navItems = [
     { label: 'Overview', section: 'main' },
     { href: '/dashboard', icon: <FiGrid />, label: 'Dashboard', badge: null },
+    { href: '/dashboard/copilot', icon: <FiMessageSquare />, label: 'AI Copilot', badge: 'New' },
     { href: '/dashboard/explorer', icon: <FiFolder />, label: 'Code Explorer', badge: null },
     { href: '/dashboard/graph', icon: <FiGitBranch />, label: 'Dependency Graph', badge: null },
 
     { label: 'Intelligence', section: 'analysis' },
+    { href: '/dashboard/engineering', icon: <FiTarget />, label: 'Engineering Insights', badge: null },
     { href: '/dashboard/risk', icon: <FiAlertTriangle />, label: 'Risk & Impact', badge: '12' },
     { href: '/dashboard/architecture', icon: <FiLayers />, label: 'Architecture View', badge: null },
-    { href: '/dashboard/business', icon: <FiTarget />, label: 'Business Intelligence', badge: null },
+    { href: '/dashboard/business', icon: <FiBriefcase />, label: 'Business Intelligence', badge: null },
 
     { label: 'Actions', section: 'actions' },
     { href: '/dashboard/remediation', icon: <FiCpu />, label: 'AI Remediation', badge: '10' },

@@ -4,3 +4,8 @@ networkx==3.2.1
 pydantic==2.5.3
 gitpython==3.1.41
 requests==2.31.0
+chromadb==0.4.22
+langchain==0.1.12
+langchain-community==0.0.28
+langchain-chroma==0.1.0
+ollama==0.1.7

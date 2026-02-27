@@ -180,7 +180,7 @@ const severityIcons: Record<string, React.ReactNode> = {
 export default function DashboardPage() {
     const [mounted, setMounted] = useState(false);
     const { scanData, isScanning, runScan } = useScan();
-    const [repoUrl, setRepoUrl] = useState('');
+    const [repoUrl, setRepoUrl] = useState('https://github.com/jai2033shankar/aero-copilot');
 
     useEffect(() => { setTimeout(() => setMounted(true), 0); }, []);
 

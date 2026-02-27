@@ -13,10 +13,11 @@ from services.ast_parser import ASTParser
 from services.graph_builder import CodeGraphBuilder
 from services.risk_scorer import RiskScorer
 from services.code_scanner import CodeScanner
-from services.github_client import GitHubClient
-from services.business_mapper import BusinessMapper
 from services.bfsi_analyzer import BFSIAnalyzer
+from services.engineering_analyzer import EngineeringAnalyzer
 from services.remediation_generator import RemediationGenerator
+from services.vector_store import VectorStore
+from services.llm_agent import LLMAgent
 
 app = FastAPI(
     title="CFIP Analysis Engine",
@@ -38,9 +39,13 @@ graph_builder = CodeGraphBuilder()
 risk_scorer = RiskScorer()
 code_scanner = CodeScanner()
 github_client = GitHubClient()
-business_mapper = BusinessMapper()
 bfsi_analyzer = BFSIAnalyzer()
+engineering_analyzer = EngineeringAnalyzer()
 remediation_generator = RemediationGenerator()
+
+# AI & RAG Components
+vector_store = VectorStore()
+llm_agent = LLMAgent()
 
 
 class ScanRequest(BaseModel):
@@ -49,13 +54,12 @@ class ScanRequest(BaseModel):
     github_pat: Optional[str] = None
 
 
-class AnalysisResponse(BaseModel):
-    nodes: list
-    edges: list
-    risks: list
-    metrics: dict
     business_mappings: list
     remediations: list
+
+class ChatRequest(BaseModel):
+    query: str
+    history: list = []  # List of {"role": "user"|"assistant", "content": "..."}
 
 
 @app.get("/health")
@@ -89,15 +93,29 @@ def analyze_codebase(request: ScanRequest):
     # Step 4: Score risks
     risks = risk_scorer.score_all(graph_data)
     
-    # Step 5: BFSI domain analysis (append to risks)
-    domain_impacts = bfsi_analyzer.analyze_domain(all_nodes)
-    risks.extend(domain_impacts)
+    # Step 5: BFSI & Gen-Eng domain analysis
+    risks.extend(bfsi_analyzer.analyze_domain(all_nodes))
+    risks.extend(engineering_analyzer.analyze_domain(all_nodes))
     
     # Step 6: Generate AI Remediations based on risks
     remediations = remediation_generator.generate_from_risks(risks)
 
     # Step 7: Map to business capabilities
     mappings = business_mapper.map_to_capabilities(all_nodes)
+    
+    # Step 8: Background RAG Indexing (Send to ChromaDB)
+    # Convert parse results into "files_data" format for the vector store
+    files_for_rag = [
+        {"filepath": file_path, "content": "\\n".join(scan_result["files"])} 
+        for file_path in scan_result["metrics"].get("language_breakdown", {}).keys()
+    ] 
+    # Mocking actual content due to scan structure limitations in current ast_parser
+    # We will pass raw AST nodes as context chunk strings for now
+    node_chunks = [
+        {"filepath": node.get("file", "unknown"), "content": f"Node: {node.get('label')}\\nType: {node.get('type')}\\nCalls: {node.get('calls')}\\nComplexity: {node.get('complexity')}"}
+        for node in all_nodes
+    ]
+    vector_store.index_repository(node_chunks)
 
     return AnalysisResponse(
         nodes=graph_data["nodes"],
@@ -107,6 +125,22 @@ def analyze_codebase(request: ScanRequest):
         business_mappings=mappings,
         remediations=remediations,
     )
+
+@app.post("/api/chat")
+async def chat_with_copilot(req: ChatRequest):
+    """Answers user queries using Ollama + retrieved codebase context."""
+    # 1. Retrieve RAG context from ChromaDB
+    context = vector_store.retrieve_context(req.query, k=5)
+    
+    # 2. Format history
+    messages = req.history.copy()
+    if not messages or messages[-1]["role"] != "user" or messages[-1]["content"] != req.query:
+        messages.append({"role": "user", "content": req.query})
+        
+    # 3. Call local Gemma3 model
+    response = llm_agent.chat(messages, context=context)
+    
+    return {"message": response}
 
 
 @app.post("/api/scan")
