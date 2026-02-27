@@ -18,6 +18,7 @@ from services.engineering_analyzer import EngineeringAnalyzer
 from services.remediation_generator import RemediationGenerator
 from services.vector_store import VectorStore
 from services.llm_agent import LLMAgent
+from services.github_client import GitHubClient
 
 app = FastAPI(
     title="CFIP Analysis Engine",

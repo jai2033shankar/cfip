@@ -32,6 +32,7 @@ const navItems = [
 ];
 
 import { ScanProvider } from '@/lib/scan-context';
+import ProductTour from '@/components/ProductTour';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
     const router = useRouter();
@@ -39,6 +40,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     const [user, setUser] = useState<AuthUser | null>(null);
     const [collapsed, setCollapsed] = useState(false);
     const [mounted, setMounted] = useState(false);
+    const [runTour, setRunTour] = useState(false);
 
     useEffect(() => {
         const u = getUserFromStorage();
@@ -65,6 +67,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
     return (
         <div style={{ minHeight: '100vh', background: 'var(--bg-primary)' }}>
+            <ProductTour run={runTour} setRun={setRunTour} />
             <ScanProvider>
                 {/* Sidebar */}
                 <aside className={`sidebar ${collapsed ? 'collapsed' : ''}`}>
@@ -87,10 +90,17 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                                 ? pathname === '/dashboard'
                                 : pathname?.startsWith(item.href || '');
 
+                            let navId = undefined;
+                            if (item.href === '/dashboard/copilot') navId = 'tour-nav-copilot';
+                            else if (item.href === '/dashboard/engineering') navId = 'tour-nav-engineering';
+                            else if (item.href === '/dashboard/remediation') navId = 'tour-nav-remediation';
+                            else if (item.href === '/dashboard/governance') navId = 'tour-nav-governance';
+
                             return (
                                 <Link
                                     key={i}
                                     href={item.href || '#'}
+                                    id={navId}
                                     className={`nav-item ${isActive ? 'active' : ''}`}
                                     title={collapsed ? item.label : undefined}
                                 >
@@ -136,7 +146,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                             <button className="header-icon-btn" title="Terminal">
                                 <FiTerminal size={18} />
                             </button>
-                            <button className="header-icon-btn" title="Documentation">
+                            <button id="tour-doc-btn" className="header-icon-btn" title="Start Demo Tour" onClick={() => setRunTour(true)}>
                                 <FiBookOpen size={18} />
                             </button>
                             <button className="header-icon-btn" title="Notifications" style={{ position: 'relative' }}>

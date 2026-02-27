@@ -12,11 +12,11 @@ class LLMAgent:
         self.model_name = model_name
         self.generate_endpoint = f"{self.ollama_url}/api/chat"
         
-        self.system_prompt = \"\"\"You are the CFIP (Code Forensics Intelligence Platform) AI Copilot.
+        self.system_prompt = """You are the CFIP (Code Forensics Intelligence Platform) AI Copilot.
 You are an expert Enterprise Architect and Staff Software Engineer. 
 You help users understand complex codebases, perform code forensics, evaluate architectural impact, and integrate DevOps practices.
 Use the provided codebase context to answer the user's questions accurately. If you don't know the answer based on the context, say so. Do not hallucinate code that isn't provided.
-Keep your answers concise, well-structured, and use Markdown for formatting code and files.\"\"\"
+Keep your answers concise, well-structured, and use Markdown for formatting code and files."""
 
     def chat(self, messages: List[Dict[str, str]], context: str = "") -> str:
         """

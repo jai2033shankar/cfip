@@ -16,7 +16,14 @@ export default function CopilotPage() {
     const [messages, setMessages] = useState<ChatMessage[]>([{
         id: '1',
         role: 'assistant',
-        content: `Hi! I'm the CFIP AI Copilot, powered by local \`gemma3:latest\` with persistent vector RAG.\\n\\nI have full contextual understanding of the currently scanned repository. You can ask me to:\\n- Explain complex code blocks or architecture flows\\n- Predict the blast radius of modifying a database schema\\n- Generate test cases or refactoring solutions\\n\\nWhat would you like to investigate?`
+        content: `Hi! I'm the CFIP AI Copilot, powered by local \`gemma3:latest\` with persistent vector RAG.
+
+I have full contextual understanding of the currently scanned repository. You can ask me to:
+- Explain complex code blocks or architecture flows
+- Predict the blast radius of modifying a database schema
+- Generate test cases or refactoring solutions
+
+What would you like to investigate?`
     }]);
     const [input, setInput] = useState('');
     const [isLoading, setIsLoading] = useState(false);

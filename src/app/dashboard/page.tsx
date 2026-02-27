@@ -252,7 +252,7 @@ export default function DashboardPage() {
                 </div>
 
                 {/* Live Scan Input */}
-                <div style={{ display: 'flex', gap: '8px' }}>
+                <div id="tour-repo-search" style={{ display: 'flex', gap: '8px' }}>
                     <input
                         className="input"
                         placeholder="https://github.com/org/repo"
