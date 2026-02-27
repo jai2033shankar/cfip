@@ -12,14 +12,20 @@ export default function SettingsPage() {
     const [githubOrg, setGithubOrg] = useState('acme-bank');
     const [ollamaUrl, setOllamaUrl] = useState('http://localhost:11434');
     const [ollamaModel, setOllamaModel] = useState('codellama:13b');
+    const [openaiKey, setOpenAIKey] = useState('');
+    const [anthropicKey, setAnthropicKey] = useState('');
     const [saved, setSaved] = useState(false);
 
     useEffect(() => {
         const storedPAT = localStorage.getItem('cfip_github_pat');
         const storedOrg = localStorage.getItem('cfip_github_org');
+        const storedOpenai = localStorage.getItem('cfip_openai_key');
+        const storedAnth = localStorage.getItem('cfip_anthropic_key');
         setTimeout(() => {
             if (storedPAT) setGithubPAT(storedPAT);
             if (storedOrg) setGithubOrg(storedOrg);
+            if (storedOpenai) setOpenAIKey(storedOpenai);
+            if (storedAnth) setAnthropicKey(storedAnth);
         }, 0);
     }, []);
 
@@ -35,6 +41,9 @@ export default function SettingsPage() {
         if (activeTab === 'github') {
             localStorage.setItem('cfip_github_pat', githubPAT);
             localStorage.setItem('cfip_github_org', githubOrg);
+        } else if (activeTab === 'model') {
+            localStorage.setItem('cfip_openai_key', openaiKey);
+            localStorage.setItem('cfip_anthropic_key', anthropicKey);
         }
         setSaved(true);
         setTimeout(() => setSaved(false), 2000);
@@ -199,10 +208,27 @@ export default function SettingsPage() {
                                     onChange={e => setThresholds({ ...thresholds, confidenceMinimum: Number(e.target.value) })}
                                     style={{ width: '100%', accentColor: 'var(--accent-primary)' }}
                                 />
-                                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                                    <span>50%</span>
-                                    <span style={{ color: 'var(--accent-primary-light)', fontWeight: 600 }}>{thresholds.confidenceMinimum}%</span>
-                                    <span>99%</span>
+                            </div>
+
+                            <div style={{ paddingBottom: '16px', marginBottom: '24px', borderBottom: '1px solid var(--border-glass)' }}></div>
+
+                            <h4 style={{ fontSize: '0.9rem', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <FiGlobe size={16} /> Premium Cloud Connections
+                            </h4>
+
+                            <div className="form-group" style={{ marginBottom: '16px' }}>
+                                <label>OpenAI API Key (GPT-4o)</label>
+                                <div style={{ position: 'relative' }}>
+                                    <FiKey style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+                                    <input className="input" type="password" placeholder="sk-..." value={openaiKey} onChange={e => setOpenAIKey(e.target.value)} style={{ paddingLeft: '36px' }} />
+                                </div>
+                            </div>
+
+                            <div className="form-group" style={{ marginBottom: '24px' }}>
+                                <label>Anthropic API Key (Claude 3.5)</label>
+                                <div style={{ position: 'relative' }}>
+                                    <FiKey style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+                                    <input className="input" type="password" placeholder="sk-ant-..." value={anthropicKey} onChange={e => setAnthropicKey(e.target.value)} style={{ paddingLeft: '36px' }} />
                                 </div>
                             </div>
 

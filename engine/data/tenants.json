@@ -1,0 +1,23 @@
+{
+    "tenant_freemium": {
+        "id": "tenant_freemium",
+        "name": "Solo Developer (Free)",
+        "tier": "freemium",
+        "api_keys": {},
+        "repo_count": 0
+    },
+    "tenant_premium": {
+        "id": "tenant_premium",
+        "name": "Startup Team (Premium)",
+        "tier": "premium",
+        "api_keys": {},
+        "repo_count": 0
+    },
+    "tenant_enterprise": {
+        "id": "tenant_enterprise",
+        "name": "Global Bank (Enterprise)",
+        "tier": "enterprise",
+        "api_keys": {},
+        "repo_count": 0
+    }
+}

@@ -3,7 +3,7 @@ CFIP Analysis Engine — FastAPI Backend
 Performs AST parsing, dependency graph building, risk scoring, and code scanning.
 """
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Optional
@@ -19,6 +19,7 @@ from services.remediation_generator import RemediationGenerator
 from services.vector_store import VectorStore
 from services.llm_agent import LLMAgent
 from services.github_client import GitHubClient
+from services.tenant_manager import TenantManager
 
 app = FastAPI(
     title="CFIP Analysis Engine",
@@ -43,6 +44,7 @@ github_client = GitHubClient()
 bfsi_analyzer = BFSIAnalyzer()
 engineering_analyzer = EngineeringAnalyzer()
 remediation_generator = RemediationGenerator()
+tenant_manager = TenantManager()
 
 # AI & RAG Components
 vector_store = VectorStore()
@@ -61,6 +63,7 @@ class ScanRequest(BaseModel):
 class ChatRequest(BaseModel):
     query: str
     history: list = []  # List of {"role": "user"|"assistant", "content": "..."}
+    provider: str = "ollama"
 
 
 @app.get("/health")
@@ -69,8 +72,12 @@ def health_check():
 
 
 @app.post("/api/analyze")
-def analyze_codebase(request: ScanRequest):
+def analyze_codebase(request: ScanRequest, x_tenant_id: str = Header(default="tenant_freemium")):
     """Full codebase analysis pipeline"""
+    
+    if not tenant_manager.check_repo_limit(x_tenant_id):
+        raise HTTPException(status_code=403, detail="Repository limit reached for your subscription tier.")
+        
     target_dir = request.directory
 
     if request.github_url and request.github_pat:
@@ -117,6 +124,9 @@ def analyze_codebase(request: ScanRequest):
         for node in all_nodes
     ]
     vector_store.index_repository(node_chunks)
+    
+    # Increment usage counter
+    tenant_manager.increment_repo_count(x_tenant_id)
 
     return AnalysisResponse(
         nodes=graph_data["nodes"],
@@ -128,8 +138,11 @@ def analyze_codebase(request: ScanRequest):
     )
 
 @app.post("/api/chat")
-async def chat_with_copilot(req: ChatRequest):
+async def chat_with_copilot(req: ChatRequest, x_tenant_id: str = Header(default="tenant_freemium")):
     """Answers user queries using Ollama + retrieved codebase context."""
+    
+    tenant = tenant_manager.get_tenant(x_tenant_id)
+    
     # 1. Retrieve RAG context from ChromaDB
     context = vector_store.retrieve_context(req.query, k=5)
     
@@ -138,10 +151,43 @@ async def chat_with_copilot(req: ChatRequest):
     if not messages or messages[-1]["role"] != "user" or messages[-1]["content"] != req.query:
         messages.append({"role": "user", "content": req.query})
         
-    # 3. Call local Gemma3 model
-    response = llm_agent.chat(messages, context=context)
+    # 3. Call local Gemma3 model or Cloud LLM if configured
+    response = llm_agent.chat(messages, context=context, tenant=tenant, provider=req.provider)
     
     return {"message": response}
+
+# --- ADMIN ROUTES ---
+
+class TierUpdateRequest(BaseModel):
+    tenant_id: str
+    tier: str
+
+class ApiKeyUpdateRequest(BaseModel):
+    tenant_id: str
+    provider: str
+    api_key: str
+
+@app.get("/api/admin/tenants")
+def get_all_tenants():
+    return tenant_manager.get_all_tenants()
+
+@app.post("/api/admin/tenants/tier")
+def update_tenant_tier(req: TierUpdateRequest):
+    success = tenant_manager.update_tenant_tier(req.tenant_id, req.tier)
+    if not success:
+        raise HTTPException(status_code=400, detail="Failed to update tenant tier")
+    return {"status": "success"}
+
+@app.post("/api/admin/tenants/apikey")
+def update_tenant_apikey(req: ApiKeyUpdateRequest):
+    success = tenant_manager.update_api_keys(req.tenant_id, req.provider, req.api_key)
+    if not success:
+        raise HTTPException(status_code=400, detail="Failed to update API key")
+    return {"status": "success"}
+    
+@app.get("/api/tenant/{tenant_id}")
+def get_tenant_info(tenant_id: str):
+    return tenant_manager.get_tenant(tenant_id)
 
 
 @app.post("/api/scan")

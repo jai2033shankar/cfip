@@ -27,6 +27,7 @@ What would you like to investigate?`
     }]);
     const [input, setInput] = useState('');
     const [isLoading, setIsLoading] = useState(false);
+    const [provider, setProvider] = useState<'ollama' | 'openai' | 'anthropic'>('ollama');
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
     const scrollToBottom = () => {
@@ -52,7 +53,8 @@ What would you like to investigate?`
 
         try {
             // Check if analysis hasn't run yet
-            if (!scanData) {
+            const isLocalStoreData = localStorage.getItem('cfip_scan_complete');
+            if (!scanData && !isLocalStoreData) {
                 // Mock response if they haven't run a scan
                 setTimeout(() => {
                     setMessages(prev => [...prev, {
@@ -67,9 +69,13 @@ What would you like to investigate?`
 
             const response = await fetch('http://localhost:8001/api/chat', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    'x-tenant-id': 'tenant_acme' // For demo purposes, hardcoding the enterprise tenant to allow access to all cloud models
+                },
                 body: JSON.stringify({
                     query: userMsg.content,
+                    provider: provider,
                     history: messages.map(m => ({ role: m.role, content: m.content }))
                 })
             });
@@ -105,12 +111,27 @@ What would you like to investigate?`
 
     return (
         <div className="animate-fade-in" style={{ height: 'calc(100vh - 120px)', display: 'flex', flexDirection: 'column' }}>
-            <div className="page-header" style={{ marginBottom: '16px' }}>
-                <div className="breadcrumb">
-                    <span>CFIP</span> / AI Copilot
+            <div className="page-header" style={{ marginBottom: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                <div>
+                    <div className="breadcrumb">
+                        <span>CFIP</span> / AI Copilot
+                    </div>
+                    <h1>Code Conversation <span className="badge badge-success" style={{ verticalAlign: 'middle', marginLeft: '12px', fontSize: '10px' }}>RAG ACTIVE</span></h1>
+                    <p>Chat with the AI Copilot integrated with full repository context vectors.</p>
                 </div>
-                <h1>Code Conversation <span className="badge badge-success" style={{ verticalAlign: 'middle', marginLeft: '12px', fontSize: '10px' }}>RAG ACTIVE</span></h1>
-                <p>Chat with the locally hosted LLM integrated with full repository context vectors.</p>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Model Provider:</span>
+                    <select
+                        className="input"
+                        style={{ padding: '4px 8px', fontSize: '0.8rem', height: 'auto', background: 'rgba(255,255,255,0.05)' }}
+                        value={provider}
+                        onChange={(e) => setProvider(e.target.value as any)}
+                    >
+                        <option value="ollama">Local (Ollama gemma3)</option>
+                        <option value="openai">OpenAI (GPT-4o)</option>
+                        <option value="anthropic">Anthropic (Claude 3.5)</option>
+                    </select>
+                </div>
             </div>
 
             <div className="glass-card-static" style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
