@@ -1,234 +1,265 @@
 # How to Use CFIP
 
-> Comprehensive guide for using the Code Forensics Intelligence Platform.
+> Complete guide for deploying and using the Code Forensics Intelligence Platform.
 
 ---
 
 ## Table of Contents
 
-1. [Getting Started](#getting-started)
-2. [Dashboard Overview](#dashboard-overview)
-3. [Legacy Language Analyzer](#legacy-language-analyzer)
-4. [Code Explorer](#code-explorer)
-5. [Dependency Graph](#dependency-graph)
-6. [Risk & Impact Analysis](#risk--impact-analysis)
-7. [Engineering Insights](#engineering-insights)
-8. [AI Remediation](#ai-remediation)
-9. [AI Copilot](#ai-copilot)
-10. [Governance](#governance)
-11. [Settings & Configuration](#settings--configuration)
-12. [Product Tour](#product-tour)
+1. [Prerequisites](#prerequisites)
+2. [Installation](#installation)
+3. [Configuration](#configuration)
+4. [Dashboard Overview](#dashboard-overview)
+5. [Legacy Language Analyzer](#legacy-language-analyzer)
+6. [Code Explorer](#code-explorer)
+7. [Dependency Graph](#dependency-graph)
+8. [Risk & Impact Analysis](#risk--impact-analysis)
+9. [Security Analysis](#security-analysis)
+10. [AI Copilot](#ai-copilot)
+11. [AI Remediation](#ai-remediation)
+12. [Governance](#governance)
+13. [Settings & Configuration](#settings--configuration)
+14. [Product Tour](#product-tour)
+15. [Troubleshooting](#troubleshooting)
 
 ---
 
-## Getting Started
+## Prerequisites
 
-### Installation
+### Required
+
+| Component | Version | Purpose |
+|---|---|---|
+| Docker + Docker Compose | 24+ | Container deployment |
+| Git | 2.0+ | Repository access |
+| Browser | Chrome/Edge latest | Dashboard access |
+
+### Optional (for local development)
+
+| Component | Version | Purpose |
+|---|---|---|
+| Node.js | 18+ | Frontend development |
+| Python | 3.10+ | Engine development |
+| Ollama | Latest | Local AI inference |
+
+### Hardware Requirements
+
+| Tier | CPU | RAM | Storage | GPU |
+|---|---|---|---|---|
+| Demo | 4 cores | 8 GB | 10 GB | Not required |
+| Production | 8+ cores | 16+ GB | 50+ GB | Recommended (NVIDIA) |
+
+---
+
+## Installation
+
+### Docker Deployment (Recommended)
 
 ```bash
-git clone https://github.com/your-org/cfip.git
+# 1. Clone the repository
+git clone https://github.com/jai2033shankar/cfip.git
 cd cfip
-npm install
+
+# 2. Copy environment config
+cp .env.example .env
+# Edit .env with your settings (Git tokens, API keys, etc.)
+
+# 3. Deploy entire stack
+docker compose up -d
+
+# 4. Open dashboard
+open http://localhost:3000
+```
+
+This starts three services:
+- **CFIP App** (Next.js + FastAPI) — `http://localhost:3000`
+- **Ollama** (Local LLM) — `http://localhost:11434`
+- **ChromaDB** (Vector Store) — `http://localhost:8000`
+
+### Local Development
+
+```bash
+# Frontend
+npm install --legacy-peer-deps
 npm run dev
+
+# Engine (separate terminal)
+cd engine
+pip install -r requirements.txt
+python main.py
+
+# Ollama (separate terminal)
+ollama serve
+ollama pull gemma3:latest
+ollama pull bge-m3:latest
 ```
 
 ### Login
-
-Navigate to `http://localhost:3000/login`
 
 | Email | Password | Role |
 |---|---|---|
 | `admin@cfip.io` | `admin123` | Administrator |
 
-After login, you'll be redirected to the dashboard.
+---
+
+## Configuration
+
+### Environment Variables
+
+Copy `.env.example` to `.env` and customize:
+
+```env
+# Git integration
+GIT_PROVIDER=github          # github, gitlab, bitbucket, azure_devops
+GIT_BASE_URL=https://api.github.com
+GIT_PAT=ghp_xxxxxxxxxxxx
+
+# LLM (optional — leave blank for air-gapped)
+OPENAI_API_KEY=sk-xxxxxxxx
+ANTHROPIC_API_KEY=sk-ant-xxxxxxxx
+
+# Security
+CFIP_SECRET_KEY=your-secret-key
+```
+
+### Enterprise Git Integration
+
+Navigate to **Settings → Enterprise Git Integration**:
+
+1. Select **Git Provider** (GitHub, GitLab, Bitbucket, Azure DevOps)
+2. Enter **API Base URL** (for self-hosted instances)
+3. Enter **Personal Access Token**
+4. Click **Test Connection** to validate
+5. Click **Save**
 
 ---
 
 ## Dashboard Overview
 
-The main dashboard provides an at-a-glance view of your codebase health:
+The main dashboard provides at-a-glance codebase health:
 
-- **Risk Heatmap** — Visual matrix of risk distribution across modules
-- **Risk Trend** — Historical chart tracking critical/high/medium/low risks over time
-- **Repository Health** — Health scores for each scanned repository
-- **Language Breakdown** — Pie chart showing language distribution (including COBOL, Fortran)
-- **Recent Scans** — Timeline of the most recent analysis runs
+- **Risk Heatmap** — Module risk distribution
+- **Risk Trend** — Historical tracking over time
+- **Repository Health** — Scores per repository
+- **Language Breakdown** — Language distribution (including COBOL/Fortran)
 
 ---
 
 ## Legacy Language Analyzer
 
-> Navigate to: **Dashboard → Legacy Analyzer** (sidebar, under "Intelligence")
-
-The Legacy Analyzer enables COBOL, Fortran, PL/I, and RPG code analysis.
+> **Dashboard → Legacy Analyzer** (sidebar, under "Intelligence")
 
 ### Language Detection
 
-1. **Paste code** into the textarea (a COBOL sample is pre-loaded)
+1. Paste COBOL, Fortran, PL/I, or RPG code
 2. Click **"Analyze Code"**
-3. The system auto-detects the language by matching keywords:
-   - COBOL: `IDENTIFICATION DIVISION`, `PROGRAM-ID`, `PERFORM`, `COPY`, `PIC`
-   - Fortran: `PROGRAM`, `SUBROUTINE`, `FUNCTION`, `IMPLICIT NONE`
-   - PL/I: `PROCEDURE`, `DECLARE`, `DCL`, `BEGIN/END`
-   - RPG: `DCL-S`, `DCL-DS`, `BEGSR`, `CHAIN`, `READ`
+3. System auto-detects language by keyword matching
+4. View structural analysis results
 
-### Structural Analysis
+### Supported Detections
 
-For COBOL code, the analyzer reports:
-- **GO TO Statements** — Count of unstructured control flow
-- **PERFORM Calls** — Structured procedure invocations
-- **CALL Statements** — External program calls
-- **COPY Imports** — Copybook dependencies
-- **Y2K Date Fields** — 2-digit year fields detected
-- **Missing END-IF** — IF statements without explicit scope terminators
+| Language | Key Patterns |
+|---|---|
+| COBOL | IDENTIFICATION DIVISION, PROGRAM-ID, PERFORM, COPY, PIC |
+| Fortran | PROGRAM, SUBROUTINE, FUNCTION, IMPLICIT NONE |
+| PL/I | PROCEDURE, DECLARE, DCL, BEGIN/END |
+| RPG | DCL-S, DCL-DS, BEGSR, CHAIN, READ |
 
-### Legacy Repositories
+### Analysis Outputs
 
-View scanned legacy repositories with:
-- Health score, risk distribution, file/function counts
-- Code structure table with LOC, complexity, test coverage per component
-
-### Risk Analysis
-
-COBOL-specific risks include:
-- GO TO spaghetti code (> 3 statements = warning)
-- Copybook sprawl (shared across 30+ programs)
-- Y2K-era date fields in financial calculations
-- Missing VSAM FILE STATUS error handling
-- Hardcoded database credentials
-
-### Modernization Recommendations
-
-AI-generated modernization strategies with:
-- **Confidence score** — How certain the AI is about the recommendation
-- **Risk reduction** — Percentage reduction in overall risk
-- **Effort estimate** — Days required for implementation
-- **Pattern** — Architectural pattern (e.g., Strangler Fig, Anti-Corruption Layer)
+- GO TO statement count, PERFORM calls, CALL statements
+- Y2K-era date fields, missing END-IF scoping
+- Modernization recommendations with confidence scores
 
 ---
 
-## Code Explorer
+## Security Analysis
 
-> Navigate to: **Dashboard → Code Explorer**
+CFIP detects security threats automatically during code scanning:
 
-Browse your codebase file trees and view parsed code structure:
-- File tree navigation with syntax highlighting
-- Function/class/module extraction per file
-- Complexity and LOC metrics inline
-
----
-
-## Dependency Graph
-
-> Navigate to: **Dashboard → Dependencies**
-
-Interactive knowledge graph showing:
-- Module → Service → Function → Database relationships
-- Call chains and data flow paths
-- Criticality-weighted edges (thickness = importance)
-- Filter by module, risk level, or relationship type
-
----
-
-## Risk & Impact Analysis
-
-> Navigate to: **Dashboard → Risk & Impact**
-
-Simulate the impact of changing a component:
-- Select a node to see all downstream impacts
-- View SLA, compliance, data, and security risk summaries
-- Color-coded severity: critical (red), high (orange), medium (yellow), low (green)
-
----
-
-## Engineering Insights
-
-> Navigate to: **Dashboard → Engineering Insights**
-
-Technical debt analysis and code quality metrics:
-- Maintainability index per module
-- Dead code detection
-- Circular dependency alerts
-- DevOps maturity indicators
-
----
-
-## AI Remediation
-
-> Navigate to: **Dashboard → AI Remediation**
-
-Generate actionable patches for technical debt:
-- AI suggests refactoring patterns with confidence scores
-- View affected files and estimated effort
-- Generate code patches (requires Ollama)
+| Category | Patterns Detected |
+|---|---|
+| **SQL Injection** | String concatenation in SQL queries |
+| **XSS** | innerHTML, dangerouslySetInnerHTML |
+| **Hardcoded Secrets** | Passwords, API keys, tokens, AWS keys |
+| **Command Injection** | os.system(), subprocess with shell=True |
+| **Insecure Deserialization** | pickle.loads, yaml.load |
+| **COBOL-Specific** | GO TO spaghetti, Y2K dates, missing error handling |
 
 ---
 
 ## AI Copilot
 
-> Navigate to: **Dashboard → AI Copilot**
+> **Dashboard → AI Copilot**
 
 Chat with your codebase using natural language:
-- Powered by local Ollama (gemma3:latest) + ChromaDB vector store
-- Ask questions like: *"What are the dependencies of TXNPROC?"*
-- No data leaves your network
 
-### Setup
+1. Select model: **Ollama (local)**, **OpenAI**, or **Anthropic**
+2. Ask questions about code structure, dependencies, risks
+3. Responses use ChromaDB RAG for full repository context
 
-1. Install Ollama: `brew install ollama` (macOS)
-2. Pull models: `ollama pull gemma3:latest && ollama pull bge-m3:latest`
-3. Start Ollama: `ollama serve`
-4. Enable in Settings → AI Model → Local Ollama
+### Setup for Local AI
 
----
+```bash
+ollama serve
+ollama pull gemma3:latest
+ollama pull bge-m3:latest
+```
 
-## Governance
-
-> Navigate to: **Dashboard → Governance**
-
-Compliance and change tracking:
-- Change approval workflows
-- Audit log of all analysis actions
-- SLA monitoring dashboards
-- Regulatory compliance status
+No data leaves your network when using Ollama.
 
 ---
 
-## Settings & Configuration
+## Settings
 
-> Navigate to: **Dashboard → Settings**
+### Git Integration
+- GitHub / GitHub Enterprise
+- GitLab (cloud + self-hosted)
+- Bitbucket Server
+- Azure DevOps
 
-### GitHub Integration
-- Connect repositories via personal access token
-- Configure auto-scan on push
-
-### AI Model
-- **Local Ollama** (default, air-gapped) — gemma3:latest
-- **OpenAI** — GPT-4 (optional, requires API key)
-- **Anthropic** — Claude (optional, requires API key)
-
-### Scanning Parameters
-- Include/exclude file patterns
-- Maximum file size threshold
-- Anti-pattern detection sensitivity
+### AI Models
+- **Ollama** — Local, air-gapped (default)
+- **OpenAI GPT-4o** — Cloud, requires API key
+- **Anthropic Claude 3.5** — Cloud, requires API key
 
 ### Risk Thresholds
-- Customize critical/high/medium/low boundaries
-- Configure alert notifications
+- Critical/High/Medium/Low boundaries
+- Complexity and coverage minimums
 
 ---
 
 ## Product Tour
 
-Click the **📖 book icon** in the dashboard header to start the guided product tour.
-
-The tour highlights:
-1. Dashboard overview and risk heatmap
-2. Repository selection and scan initiation
-3. AI Copilot chat interface
+Click the **📖 book icon** in the dashboard header. The tour covers:
+1. Dashboard overview
+2. Repository scanning
+3. AI Copilot
 4. Engineering Insights
-5. **Legacy Language Analyzer** — COBOL/Fortran/PL/I/RPG analysis
-6. AI Remediation patches
-7. Governance and compliance
+5. Legacy Language Analyzer
+6. AI Remediation
+7. Governance
 
-The tour can be restarted at any time by clicking the book icon again.
+---
+
+## Troubleshooting
+
+| Issue | Fix |
+|---|---|
+| `docker compose up` fails | Ensure Docker Desktop is running |
+| Ollama not responding | Check: `docker compose logs ollama` |
+| Build fails | `npm install --legacy-peer-deps && npm run build` |
+| Architecture diagram missing | Verify `public/architecture-diagram.png` exists |
+| Legacy Analyzer empty | Check seed-data.ts exports |
+| Engine 502 | `docker compose restart cfip-app` |
+| ChromaDB unhealthy | `docker compose restart chromadb` |
+
+### Docker Commands
+
+```bash
+docker compose up -d          # Start stack
+docker compose logs -f        # View logs
+docker compose down           # Stop
+docker compose down -v        # Stop + delete data
+docker compose restart        # Restart all
+```

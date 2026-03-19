@@ -1,33 +1,38 @@
 # CFIP Demo Guide
 
-> Step-by-step walkthrough for demonstrating the Code Forensics Intelligence Platform.
+> Enterprise step-by-step walkthrough for the Code Forensics Intelligence Platform.
 
 ---
 
-## Pre-requisites
+## Prerequisites
 
-| Requirement | Version |
-|---|---|
-| Node.js  | 18+ |
-| npm      | 9+  |
-| Browser  | Chrome / Edge (latest) |
+| Requirement | Version | Install |
+|---|---|---|
+| Docker + Compose | 24+ | [docker.com](https://docker.com) |
+| Git | 2.0+ | `brew install git` |
+| Browser | Chrome/Edge | Latest |
+
+---
+
+## Quick Start (One Command)
 
 ```bash
+git clone https://github.com/jai2033shankar/cfip.git
 cd cfip
-npm install
-npm run dev
+docker compose up -d
+open http://localhost:3000
 ```
 
-Navigate to `http://localhost:3000`
+Wait ~60 seconds for services to start. Ollama will auto-pull models on first run.
 
 ---
 
-## Demo Flow
+## Demo Flow (15 min)
 
 ### 1. Landing Page (2 min)
 
-1. Open the landing page — observe the hero section with key stats
-2. Scroll to **Supported Technologies** — highlight **COBOL**, **Fortran**, **PL/I**, **RPG** alongside Java, Python, etc.
+1. Open `http://localhost:3000` — observe the professional landing page
+2. Scroll to **Supported Technologies** — highlight COBOL, Fortran, PL/I, RPG alongside modern stacks
 3. Scroll to **System Architecture** — show the 6-layer architecture diagram
 4. Scroll to **Security & Compliance** — emphasize air-gapped, on-prem deployment
 5. Click **"Launch Dashboard"**
@@ -40,74 +45,74 @@ Navigate to `http://localhost:3000`
 
 ### 3. Dashboard Overview (2 min)
 
-1. Show the **Risk Heatmap** and **Risk Trend** charts
-2. Point out the **Language Breakdown** — COBOL now shows at **14%** of the codebase
-3. Open the **Repository Health** cards and show the legacy repos (core-batch-cobol, interest-calc-fortran)
+1. Point out the **Risk Heatmap**, **Risk Trend**, and **Language Breakdown**
+2. COBOL now shows at **14%** of the codebase
+3. Show legacy repos in **Repository Health** cards
 
 ### 4. Product Tour (1 min)
 
-1. Click the **book icon** (📖) in the top-right header bar
-2. Walk through the guided tour, pausing at the **"Legacy Language Analyzer"** step
-3. Show how the tour highlights each feature in the sidebar
+1. Click the **📖 book icon** in the header
+2. Walk through the guided tour — pause at **Legacy Language Analyzer** step
+3. Show how each feature is highlighted
 
-### 5. Legacy Language Analyzer — NEW ⭐ (5 min)
+### 5. Legacy Analyzer ⭐ (5 min)
 
-1. Click **"Legacy Analyzer"** in the sidebar (note the **"New"** badge)
+1. Click **"Legacy Analyzer"** in the sidebar (note **"New"** badge)
 2. **Language Detection Tab:**
-   - Show the pre-loaded COBOL sample code in the textarea
-   - Click **"Analyze Code"** — observe: language detected as COBOL, matched keywords highlighted
-   - Show the **Structural Analysis** results: GO TO count, PERFORM calls, Y2K date fields
-   - Scroll down to the **Supported Legacy Languages** cards
+   - Show pre-loaded COBOL sample code
+   - Click **"Analyze Code"** — observe language detection + keyword matching
+   - Show **Structural Analysis**: GO TO count, Y2K date fields
 3. **Legacy Repositories Tab:**
-   - Show the 2 legacy repositories: `core-batch-cobol` (health: 42) and `interest-calc-fortran` (health: 55)
-   - Point out the risk profiles and low health scores
-   - Show the **Legacy Code Structure** table with LOC, complexity, and test coverage
+   - Show `core-batch-cobol` (health: 42) and `interest-calc-fortran` (health: 55)
+   - Show the code structure table with complexity and test coverage
 4. **Risk Analysis Tab:**
-   - Walk through COBOL-specific risks: GO TO spaghetti, copybook sprawl, Y2K dates, missing VSAM error handling, hardcoded credentials
-   - Highlight the **Business Impact** for each risk and estimated effort
+   - Walk through COBOL-specific risks with business impact
 5. **Modernization Tab:**
-   - Show the 4 modernization recommendations with confidence scores and risk reduction percentages
-   - Highlight: "Modernize COBOL Batch to Java Spring Batch" (78% confidence, 45% risk reduction)
+   - Show AI modernization recommendations with confidence scores
 
-### 6. Code Explorer (2 min)
+### 6. Code Explorer (1 min)
 
-1. Navigate to **Code Explorer** — show the file tree with COBOL files
-2. Browse a COBOL file and show the parsed structure
+- Browse file trees, show parsed COBOL structures
 
-### 7. Dependencies (2 min)
-
-1. Navigate to **Dependencies** — show the knowledge graph
-2. Filter to show COBOL module dependencies (TXNPROC → VALIDATE-TRANSACTION → ACCT-MASTER)
-
-### 8. AI Copilot (2 min)
+### 7. AI Copilot (2 min)
 
 1. Navigate to **AI Copilot**
-2. Ask: *"What are the main risks in our COBOL batch processing system?"*
-3. Show the AI response using local Ollama inference
+2. Select model provider (Local Ollama / OpenAI / Anthropic)
+3. Ask: *"What are the main risks in our COBOL batch system?"*
 
-### 9. Settings (1 min)
+### 8. Settings — Enterprise Git (1 min)
 
-1. Navigate to **Settings**
-2. Show the AI configuration (Ollama local model)
-3. Show scanning parameters
+1. Navigate to **Settings → Enterprise Git Integration**
+2. Show Git provider dropdown: GitHub, GitLab, Bitbucket, Azure DevOps
+3. Show API Base URL field for self-hosted instances
+4. Show connection test functionality
+
+---
+
+## Docker Commands Reference
+
+```bash
+# Start full stack
+docker compose up -d
+
+# View logs
+docker compose logs -f cfip-app
+
+# Stop
+docker compose down
+
+# Reset data
+docker compose down -v
+```
 
 ---
 
 ## Key Talking Points
 
-- ✅ **Legacy-first platform** — COBOL, Fortran, PL/I, RPG first-class support
-- ✅ **On-premise, air-gapped** — zero data leaves the network
-- ✅ **AI-powered** — local LLM for code comprehension and remediation
-- ✅ **BFSI-ready** — compliance, risk, and governance built in
-- ✅ **Modernization** — actionable recommendations with confidence scoring
-
----
-
-## Troubleshooting
-
-| Issue | Fix |
-|---|---|
-| `npm run dev` fails | Delete `node_modules` + `.next`, then `npm install && npm run dev` |
-| Ollama not responding | `ollama serve` and pull models: `ollama pull gemma3:latest` |
-| Architecture diagram missing | Ensure `public/architecture-diagram.png` exists |
-| Legacy Analyzer empty | Check that `seed-data.ts` has `legacyRepositories` exports |
+- ✅ **One-command deployment** — `docker compose up -d`
+- ✅ **Legacy-first** — COBOL, Fortran, PL/I, RPG
+- ✅ **Enterprise Git** — GitHub, GitLab, Bitbucket, Azure DevOps
+- ✅ **On-premise, air-gapped** — zero data exfiltration
+- ✅ **Local AI** — Ollama for complete data privacy
+- ✅ **Security analysis** — OWASP, secrets detection, XSS, command injection
+- ✅ **No token limitations** — streaming + chunked LLM responses

@@ -1,0 +1,105 @@
+# ============================================
+# CFIP — Code Forensics Intelligence Platform
+# Docker Compose — Full Stack Deployment
+# ============================================
+# Usage: docker compose up -d
+# Dashboard: http://localhost:3000
+# Engine API: http://localhost:8001
+# ============================================
+
+services:
+  # ---- CFIP Application (Next.js + FastAPI) ----
+  cfip-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: cfip-app
+    ports:
+      - "${CFIP_PORT:-3000}:3000"      # Dashboard UI
+      - "${ENGINE_PORT:-8001}:8001"     # Analysis Engine API
+    environment:
+      - NODE_ENV=production
+      - NEXT_TELEMETRY_DISABLED=1
+      - OLLAMA_HOST=${OLLAMA_HOST:-http://ollama:11434}
+      - CHROMADB_HOST=${CHROMADB_HOST:-http://chromadb:8000}
+      - GIT_PROVIDER=${GIT_PROVIDER:-github}
+      - GIT_BASE_URL=${GIT_BASE_URL:-https://api.github.com}
+      - GIT_PAT=${GIT_PAT:-}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      - CFIP_SECRET_KEY=${CFIP_SECRET_KEY:-cfip-enterprise-2026}
+    volumes:
+      - cfip-data:/app/data
+      - cfip-repos:/app/repos
+    depends_on:
+      ollama:
+        condition: service_started
+      chromadb:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - cfip-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 45s
+
+  # ---- Ollama LLM Server (Local AI) ----
+  ollama:
+    image: ollama/ollama:latest
+    container_name: cfip-ollama
+    ports:
+      - "${OLLAMA_PORT:-11434}:11434"
+    volumes:
+      - ollama-data:/root/.ollama
+    restart: unless-stopped
+    networks:
+      - cfip-network
+    environment:
+      - OLLAMA_KEEP_ALIVE=24h
+    # GPU passthrough (uncomment for NVIDIA)
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: all
+    #           capabilities: [gpu]
+
+  # ---- ChromaDB Vector Store ----
+  chromadb:
+    image: chromadb/chroma:latest
+    container_name: cfip-chromadb
+    ports:
+      - "${CHROMADB_PORT:-8000}:8000"
+    volumes:
+      - chroma-data:/chroma/chroma
+    restart: unless-stopped
+    networks:
+      - cfip-network
+    environment:
+      - IS_PERSISTENT=TRUE
+      - ANONYMIZED_TELEMETRY=FALSE
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/heartbeat"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+volumes:
+  cfip-data:
+    driver: local
+  cfip-repos:
+    driver: local
+  ollama-data:
+    driver: local
+  chroma-data:
+    driver: local
+
+networks:
+  cfip-network:
+    driver: bridge
+    name: cfip-network

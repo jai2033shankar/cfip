@@ -10,11 +10,18 @@ export default function SettingsPage() {
     const [activeTab, setActiveTab] = useState('github');
     const [githubPAT, setGithubPAT] = useState('');
     const [githubOrg, setGithubOrg] = useState('acme-bank');
+    const [gitProvider, setGitProvider] = useState('github');
+    const [gitBaseUrl, setGitBaseUrl] = useState('https://api.github.com');
     const [ollamaUrl, setOllamaUrl] = useState('http://localhost:11434');
-    const [ollamaModel, setOllamaModel] = useState('codellama:13b');
+    const [ollamaModel, setOllamaModel] = useState('gemma3:latest');
     const [openaiKey, setOpenAIKey] = useState('');
     const [anthropicKey, setAnthropicKey] = useState('');
     const [saved, setSaved] = useState(false);
+    const [gitStatus, setGitStatus] = useState<'idle' | 'testing' | 'connected' | 'error'>('idle');
+    const [gitUser, setGitUser] = useState('');
+    const [systemStatus, setSystemStatus] = useState<Record<string, string>>({
+        engine: 'checking', ollama: 'checking', chromadb: 'checking'
+    });
 
     useEffect(() => {
         const storedPAT = localStorage.getItem('cfip_github_pat');
@@ -104,11 +111,46 @@ export default function SettingsPage() {
                     {activeTab === 'github' && (
                         <div className="glass-card-static" style={{ padding: '24px' }}>
                             <h3 style={{ fontSize: '1rem', marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                <FiGithub size={18} /> GitHub Integration
+                                <FiGithub size={18} /> Enterprise Git Integration
                             </h3>
                             <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '24px' }}>
-                                Connect to GitHub repositories for automated code scanning.
+                                Connect to any enterprise Git provider for automated code scanning.
                             </p>
+
+                            <div className="form-group" style={{ marginBottom: '16px' }}>
+                                <label>Git Provider</label>
+                                <select className="input" value={gitProvider} onChange={e => {
+                                    setGitProvider(e.target.value);
+                                    const urls: Record<string, string> = {
+                                        github: 'https://api.github.com',
+                                        gitlab: 'https://gitlab.com',
+                                        bitbucket: 'https://api.bitbucket.org',
+                                        azure_devops: 'https://dev.azure.com/your-org',
+                                    };
+                                    setGitBaseUrl(urls[e.target.value] || '');
+                                    setGitStatus('idle');
+                                }}>
+                                    <option value="github">GitHub / GitHub Enterprise</option>
+                                    <option value="gitlab">GitLab (Self-Hosted / Cloud)</option>
+                                    <option value="bitbucket">Bitbucket Server / Cloud</option>
+                                    <option value="azure_devops">Azure DevOps</option>
+                                </select>
+                            </div>
+
+                            <div className="form-group" style={{ marginBottom: '16px' }}>
+                                <label>API Base URL</label>
+                                <div style={{ position: 'relative' }}>
+                                    <FiServer style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+                                    <input
+                                        className="input"
+                                        placeholder="https://github.example.com/api/v3"
+                                        value={gitBaseUrl}
+                                        onChange={e => setGitBaseUrl(e.target.value)}
+                                        style={{ paddingLeft: '36px' }}
+                                    />
+                                </div>
+                                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>For enterprise: use your internal Git API URL</span>
+                            </div>
 
                             <div className="form-group" style={{ marginBottom: '16px' }}>
                                 <label>Personal Access Token (PAT)</label>
@@ -117,7 +159,7 @@ export default function SettingsPage() {
                                     <input
                                         className="input"
                                         type="password"
-                                        placeholder="ghp_xxxxxxxxxxxxxxxxxxxx"
+                                        placeholder={gitProvider === 'github' ? 'ghp_xxxxxxxxxxxxxxxxxxxx' : 'your-pat-token'}
                                         value={githubPAT}
                                         onChange={e => setGithubPAT(e.target.value)}
                                         style={{ paddingLeft: '36px' }}
@@ -138,15 +180,6 @@ export default function SettingsPage() {
                                         style={{ paddingLeft: '36px' }}
                                     />
                                 </div>
-                            </div>
-
-                            <div className="form-group" style={{ marginBottom: '24px' }}>
-                                <label>Default Branch</label>
-                                <select className="input" defaultValue="main">
-                                    <option value="main">main</option>
-                                    <option value="master">master</option>
-                                    <option value="develop">develop</option>
-                                </select>
                             </div>
 
                             <div style={{

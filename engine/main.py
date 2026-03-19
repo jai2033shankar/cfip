@@ -1,13 +1,16 @@
 """
 CFIP Analysis Engine — FastAPI Backend
 Performs AST parsing, dependency graph building, risk scoring, and code scanning.
+Enterprise Edition v2.0.0
 """
 
 from fastapi import FastAPI, Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, List
 import os
+import json
 
 from services.ast_parser import ASTParser
 from services.graph_builder import CodeGraphBuilder
@@ -15,6 +18,7 @@ from services.risk_scorer import RiskScorer
 from services.code_scanner import CodeScanner
 from services.bfsi_analyzer import BFSIAnalyzer
 from services.engineering_analyzer import EngineeringAnalyzer
+from services.business_mapper import BusinessMapper
 from services.remediation_generator import RemediationGenerator
 from services.vector_store import VectorStore
 from services.llm_agent import LLMAgent
@@ -23,13 +27,18 @@ from services.tenant_manager import TenantManager
 
 app = FastAPI(
     title="CFIP Analysis Engine",
-    description="Code Forensics Intelligence Platform — Analysis Microservice",
-    version="1.0.0",
+    description="Code Forensics Intelligence Platform — Enterprise Edition",
+    version="2.0.0",
 )
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
+    allow_origins=[
+        "http://localhost:3000",
+        "http://cfip-app:3000",
+        "http://127.0.0.1:3000",
+        os.getenv("CFIP_CORS_ORIGIN", "http://localhost:3000"),
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -45,11 +54,14 @@ bfsi_analyzer = BFSIAnalyzer()
 engineering_analyzer = EngineeringAnalyzer()
 remediation_generator = RemediationGenerator()
 tenant_manager = TenantManager()
+business_mapper = BusinessMapper()
 
 # AI & RAG Components
 vector_store = VectorStore()
 llm_agent = LLMAgent()
 
+
+# --- Request/Response Models ---
 
 class ScanRequest(BaseModel):
     directory: Optional[str] = None
@@ -57,18 +69,37 @@ class ScanRequest(BaseModel):
     github_pat: Optional[str] = None
 
 
+class AnalysisResponse(BaseModel):
+    nodes: list
+    edges: list
+    risks: list
+    metrics: dict
     business_mappings: list
     remediations: list
 
+
 class ChatRequest(BaseModel):
     query: str
-    history: list = []  # List of {"role": "user"|"assistant", "content": "..."}
+    history: list = []
     provider: str = "ollama"
+
+
+class GitConnectRequest(BaseModel):
+    provider: str = "github"  # github, gitlab, bitbucket, azure_devops
+    base_url: str = "https://api.github.com"
+    pat: str = ""
+    ssh_key: Optional[str] = None
 
 
 @app.get("/health")
 def health_check():
-    return {"status": "healthy", "service": "cfip-analysis-engine", "version": "1.0.0"}
+    return {
+        "status": "healthy",
+        "service": "cfip-analysis-engine",
+        "version": "2.0.0",
+        "ollama": os.getenv("OLLAMA_HOST", "http://localhost:11434"),
+        "chromadb": os.getenv("CHROMADB_HOST", "http://localhost:8000"),
+    }
 
 
 @app.post("/api/analyze")
@@ -112,18 +143,14 @@ def analyze_codebase(request: ScanRequest, x_tenant_id: str = Header(default="te
     mappings = business_mapper.map_to_capabilities(all_nodes)
     
     # Step 8: Background RAG Indexing (Send to ChromaDB)
-    # Convert parse results into "files_data" format for the vector store
-    files_for_rag = [
-        {"filepath": file_path, "content": "\\n".join(scan_result["files"])} 
-        for file_path in scan_result["metrics"].get("language_breakdown", {}).keys()
-    ] 
-    # Mocking actual content due to scan structure limitations in current ast_parser
-    # We will pass raw AST nodes as context chunk strings for now
     node_chunks = [
-        {"filepath": node.get("file", "unknown"), "content": f"Node: {node.get('label')}\\nType: {node.get('type')}\\nCalls: {node.get('calls')}\\nComplexity: {node.get('complexity')}"}
+        {"filepath": node.get("file", "unknown"), "content": f"Node: {node.get('label')}\nType: {node.get('type')}\nCalls: {node.get('calls')}\nComplexity: {node.get('complexity')}"}
         for node in all_nodes
     ]
-    vector_store.index_repository(node_chunks)
+    try:
+        vector_store.index_repository(node_chunks)
+    except Exception:
+        pass  # ChromaDB may not be available in demo mode
     
     # Increment usage counter
     tenant_manager.increment_repo_count(x_tenant_id)
@@ -219,6 +246,81 @@ def clone_repository(url: str, pat: str):
     """Clone a GitHub repository for analysis"""
     result = github_client.clone_repo(url, pat)
     return {"directory": result, "status": "cloned"}
+
+
+@app.post("/api/git/connect")
+def validate_git_connection(req: GitConnectRequest):
+    """Validate enterprise Git provider connection."""
+    import requests as req_lib
+    
+    headers = {"Authorization": f"token {req.pat}"}
+    
+    provider_urls = {
+        "github": f"{req.base_url}/user",
+        "gitlab": f"{req.base_url}/api/v4/user",
+        "bitbucket": f"{req.base_url}/2.0/user",
+        "azure_devops": f"{req.base_url}/_apis/projects?api-version=7.0",
+    }
+    
+    url = provider_urls.get(req.provider, f"{req.base_url}/user")
+    
+    try:
+        if req.provider == "azure_devops":
+            import base64
+            auth = base64.b64encode(f":{req.pat}".encode()).decode()
+            headers = {"Authorization": f"Basic {auth}"}
+        elif req.provider == "gitlab":
+            headers = {"PRIVATE-TOKEN": req.pat}
+            
+        response = req_lib.get(url, headers=headers, timeout=10)
+        
+        if response.status_code == 200:
+            data = response.json()
+            user_info = {
+                "github": lambda d: {"username": d.get("login"), "name": d.get("name")},
+                "gitlab": lambda d: {"username": d.get("username"), "name": d.get("name")},
+                "bitbucket": lambda d: {"username": d.get("username"), "name": d.get("display_name")},
+                "azure_devops": lambda d: {"username": "connected", "name": f"{d.get('count', 0)} projects"},
+            }
+            info = user_info.get(req.provider, lambda d: {})(data)
+            return {"status": "connected", "provider": req.provider, **info}
+        else:
+            return {"status": "error", "message": f"Authentication failed (HTTP {response.status_code})"}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
+
+@app.get("/api/status")
+def system_status():
+    """Check connectivity to all dependent services."""
+    import requests as req_lib
+    
+    status = {
+        "engine": "running",
+        "ollama": "disconnected",
+        "chromadb": "disconnected",
+    }
+    
+    ollama_host = os.getenv("OLLAMA_HOST", "http://localhost:11434")
+    chromadb_host = os.getenv("CHROMADB_HOST", "http://localhost:8000")
+    
+    try:
+        r = req_lib.get(f"{ollama_host}/api/tags", timeout=3)
+        if r.status_code == 200:
+            models = [m["name"] for m in r.json().get("models", [])]
+            status["ollama"] = "connected"
+            status["ollama_models"] = models
+    except Exception:
+        pass
+    
+    try:
+        r = req_lib.get(f"{chromadb_host}/api/v1/heartbeat", timeout=3)
+        if r.status_code == 200:
+            status["chromadb"] = "connected"
+    except Exception:
+        pass
+    
+    return status
 
 
 if __name__ == "__main__":

@@ -180,15 +180,52 @@ class CodeScanner:
                         "description": "String concatenation detected in SQL query construction",
                     })
 
-            # Hardcoded secrets
-            secret_patterns = ["password =", "api_key =", "secret =", "token ="]
-            for sp in secret_patterns:
+            # Hardcoded secrets — expanded patterns
+            secret_patterns = [
+                ("password =", "Hardcoded Password"),
+                ("api_key =", "Hardcoded API Key"),
+                ("secret =", "Hardcoded Secret"),
+                ("token =", "Hardcoded Token"),
+                ("aws_access_key", "AWS Access Key"),
+                ("private_key", "Private Key Exposure"),
+            ]
+            for sp, label in secret_patterns:
                 if sp in source.lower() and ("'" in source or '"' in source):
                     patterns.append({
                         "type": "security",
-                        "name": "Potential Hardcoded Secret",
+                        "name": label,
+                        "severity": "critical",
+                        "description": f"Possible hardcoded credential: {sp.strip()}",
+                    })
+                    break  # One per file to avoid noise
+
+            # XSS risk (innerHTML / dangerouslySetInnerHTML)
+            if language in ("javascript", "typescript"):
+                if "innerHTML" in source or "dangerouslySetInnerHTML" in source:
+                    patterns.append({
+                        "type": "security",
+                        "name": "Potential XSS Vulnerability",
                         "severity": "high",
-                        "description": f"Possible hardcoded credential detected: {sp.strip()}",
+                        "description": "Direct HTML injection via innerHTML or dangerouslySetInnerHTML",
+                    })
+
+            # Command injection risk
+            if language == "python":
+                if "os.system(" in source or ("subprocess" in source and "shell=True" in source):
+                    patterns.append({
+                        "type": "security",
+                        "name": "Command Injection Risk",
+                        "severity": "critical",
+                        "description": "Shell command execution with potential user input",
+                    })
+
+                # Insecure deserialization
+                if "pickle.loads" in source or "yaml.load(" in source:
+                    patterns.append({
+                        "type": "security",
+                        "name": "Insecure Deserialization",
+                        "severity": "high",
+                        "description": "Unsafe deserialization can lead to remote code execution",
                     })
 
             # Large function detection
