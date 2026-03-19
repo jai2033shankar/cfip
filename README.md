@@ -301,6 +301,7 @@ cfip/
 │   │       ├── copilot/page.tsx  # AI Copilot
 │   │       ├── remediation/      # AI Remediation
 │   │       ├── governance/       # Governance
+│   │       ├── profile/page.tsx  # User Profile & Self-Service
 │   │       └── settings/page.tsx # Config (Git, LLM, Security)
 │   ├── components/
 │   │   └── ProductTour.tsx       # Interactive guided tour
@@ -358,6 +359,8 @@ cfip/
 
 ---
 
-## License
+## Contact & License
 
-Proprietary — Enterprise License. Contact **sales@cfip.io** for details.
+Proprietary — Enterprise License. 
+
+For commercial setup, deployment support, or feedback, contact **[jai.inventit@gmail.com](mailto:jai.inventit@gmail.com)**.
