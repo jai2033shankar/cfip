@@ -43,7 +43,7 @@ fi
 if [ -n "$CHROMADB_HOST" ]; then
     echo "[CFIP] Checking ChromaDB at $CHROMADB_HOST..."
     for i in $(seq 1 20); do
-        if curl -sf "$CHROMADB_HOST/api/v1/heartbeat" > /dev/null 2>&1; then
+        if curl -sf "$CHROMADB_HOST/api/v2/heartbeat" > /dev/null 2>&1; then
             echo "[CFIP] ✅ ChromaDB is ready"
             break
         fi

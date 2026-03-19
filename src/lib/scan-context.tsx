@@ -45,6 +45,10 @@ export function ScanProvider({ children }: { children: ReactNode }) {
             });
             const data = await response.json();
 
+            if (!response.ok) {
+                throw new Error(data.error || data.detail || 'Scan failed to complete');
+            }
+
             if (data && data.nodes) {
                 // Log this scan in local audit trail
                 const newAuditEntry = {
@@ -64,11 +68,11 @@ export function ScanProvider({ children }: { children: ReactNode }) {
                 setIsScanning(false);
                 return true;
             }
-            throw new Error('Invalid data format');
-        } catch (error) {
+            throw new Error(data.error || 'Invalid data format received from engine');
+        } catch (error: any) {
             console.error('Scan failed:', error);
             setIsScanning(false);
-            return false;
+            throw error; // Let the caller handle and display the error
         }
     };
 

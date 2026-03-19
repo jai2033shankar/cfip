@@ -27,11 +27,9 @@ export async function POST(request: Request) {
             const data = await engineResponse.json();
             return NextResponse.json(data);
         } catch {
-            // Fallback to seed data if engine is not running
             return NextResponse.json({
-                message: 'Analysis engine not available. Using seed data.',
-                data: { repositories, stats: dashboardStats },
-            });
+                error: 'Analysis engine not available. Please ensure the Python engine is running (e.g. docker compose up) to perform live scans.',
+            }, { status: 503 });
         }
     }
 

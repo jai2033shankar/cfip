@@ -314,7 +314,7 @@ def system_status():
         pass
     
     try:
-        r = req_lib.get(f"{chromadb_host}/api/v1/heartbeat", timeout=3)
+        r = req_lib.get(f"{chromadb_host}/api/v2/heartbeat", timeout=3)
         if r.status_code == 200:
             status["chromadb"] = "connected"
     except Exception:

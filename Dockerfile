@@ -6,9 +6,14 @@
 # ============================================
 # Stage 1: Build Next.js Frontend
 # ============================================
-FROM node:18-alpine AS frontend-builder
+FROM node:20-slim AS frontend-builder
 
 WORKDIR /app
+
+# Install build tools for native modules (e.g. better-sqlite3)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    python3 make g++ \
+    && rm -rf /var/lib/apt/lists/*
 
 # Copy package files
 COPY package.json package-lock.json ./
@@ -38,7 +43,7 @@ RUN pip install --no-cache-dir --target=/engine/deps -r requirements.txt
 # ============================================
 # Stage 3: Final Runtime Image
 # ============================================
-FROM node:18-slim
+FROM node:20-slim
 
 LABEL maintainer="CFIP Team <admin@cfip.io>"
 LABEL description="Code Forensics Intelligence Platform — Enterprise Edition"

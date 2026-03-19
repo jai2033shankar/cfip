@@ -193,7 +193,11 @@ export default function DashboardPage() {
             alert("No GitHub PAT found. Please add it in Settings.");
             return;
         }
-        await runScan(repoUrl, pat);
+        try {
+            await runScan(repoUrl, pat);
+        } catch (error: any) {
+            alert(`Scan Error: ${error.message}`);
+        }
     };
 
     // Calculate dynamic stats if scanData is present
