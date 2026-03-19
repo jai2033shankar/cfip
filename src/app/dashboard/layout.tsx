@@ -55,6 +55,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
     const handleLogout = () => {
         clearUserFromStorage();
+        setUser(null);
         router.push('/login');
     };
 
@@ -156,7 +157,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                                 <span className="notification-dot" />
                             </button>
                             <div style={{ width: '1px', height: '24px', background: 'var(--border-secondary)', margin: '0 4px' }} />
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }}>
+                            <Link href="/dashboard/profile" style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', textDecoration: 'none', color: 'inherit' }}>
                                 <div className="avatar">{user.avatar}</div>
                                 {!collapsed && (
                                     <div>
@@ -164,7 +165,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                                         <div style={{ fontSize: '0.7rem', color: 'var(--text-tertiary)', textTransform: 'capitalize' }}>{user.role}</div>
                                     </div>
                                 )}
-                            </div>
+                            </Link>
                             <button className="header-icon-btn" onClick={handleLogout} title="Sign Out">
                                 <FiLogOut size={18} />
                             </button>
