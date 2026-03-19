@@ -103,7 +103,7 @@ def health_check():
 
 
 @app.post("/api/analyze")
-def analyze_codebase(request: ScanRequest, x_tenant_id: str = Header(default="tenant_freemium")):
+def analyze_codebase(request: ScanRequest, x_tenant_id: str = Header(default="tenant_enterprise")):
     """Full codebase analysis pipeline"""
     
     if not tenant_manager.check_repo_limit(x_tenant_id):
@@ -165,7 +165,7 @@ def analyze_codebase(request: ScanRequest, x_tenant_id: str = Header(default="te
     )
 
 @app.post("/api/chat")
-async def chat_with_copilot(req: ChatRequest, x_tenant_id: str = Header(default="tenant_freemium")):
+async def chat_with_copilot(req: ChatRequest, x_tenant_id: str = Header(default="tenant_enterprise")):
     """Answers user queries using Ollama + retrieved codebase context."""
     
     tenant = tenant_manager.get_tenant(x_tenant_id)

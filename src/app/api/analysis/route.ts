@@ -25,7 +25,7 @@ export async function POST(request: Request) {
                 }),
             });
             const data = await engineResponse.json();
-            return NextResponse.json(data);
+            return NextResponse.json(data, { status: engineResponse.status });
         } catch {
             return NextResponse.json({
                 error: 'Analysis engine not available. Please ensure the Python engine is running (e.g. docker compose up) to perform live scans.',
